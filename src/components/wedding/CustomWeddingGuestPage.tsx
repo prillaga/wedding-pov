@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CoupleJoinFlow } from "@/components/home/CoupleJoinFlow";
 import { EventThemeProvider } from "@/components/theme/EventThemeProvider";
 import { LoadingShell } from "@/components/ui/LoadingShell";
+import { readBootstrapFromLocation, cacheEventInSession } from "@/lib/event-bootstrap";
 import { getEventStatusLabel, isEventJoinable } from "@/lib/event-utils";
 import { loadEventForGuest } from "@/lib/store";
 import type { WeddingEvent } from "@/types";
@@ -22,6 +23,10 @@ export default function CustomWeddingGuestPage({
 
   useEffect(() => {
     let cancelled = false;
+    const bootstrap = readBootstrapFromLocation();
+    if (bootstrap && bootstrap.id === eventId) {
+      cacheEventInSession(bootstrap);
+    }
     void loadEventForGuest(eventId).then((loaded) => {
       if (!cancelled) setEvent(loaded);
     });
@@ -40,9 +45,8 @@ export default function CustomWeddingGuestPage({
         <div>
           <p className="font-serif text-xl mb-2">Event not found</p>
           <p className="text-sm text-warm-gray mb-4">
-            Ask your wedding coordinator for the correct QR code or invitation link.
-            If you are the coordinator, open the admin dashboard and save the event so it
-            syncs for all guest devices.
+            Ask your wedding coordinator for the correct QR code, join link, or portable code
+            (starts with <span className="font-mono">wedding-pov:</span>).
           </p>
           <Link href="/" className="text-champagne underline">
             Scan QR code

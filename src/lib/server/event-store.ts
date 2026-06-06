@@ -1,5 +1,6 @@
 import { ADMIN_PASSWORD } from "@/lib/constants";
-import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "@/lib/demo-event";
+import { isDemoEventId, normalizeEventId } from "@/lib/demo-event";
+import { getPublicEvent } from "@/lib/public-events";
 import type { WeddingEvent } from "@/types";
 
 const KEY_PREFIX = "wedding-pov:event:";
@@ -47,8 +48,11 @@ export async function readEventFromCloud(eventId: string): Promise<WeddingEvent 
   if (!id) return null;
 
   if (isDemoEventId(id)) {
-    return getHardcodedDemoEvent();
+    return getPublicEvent(id);
   }
+
+  const published = getPublicEvent(id);
+  if (published) return published;
 
   const raw = await kvGet(eventKey(id));
   if (!raw) return null;

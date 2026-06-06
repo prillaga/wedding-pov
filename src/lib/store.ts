@@ -35,8 +35,9 @@ import {
   THEME_PRESETS,
 } from "./constants";
 import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "./demo-event";
-import { readBootstrapFromLocation } from "./event-bootstrap";
+import { readBootstrapFromLocation, readEventFromSession } from "./event-bootstrap";
 import { fetchRemoteEvent, pushRemoteEvent } from "./event-remote";
+import { getPublicEvent } from "./public-events";
 import { getGuestUploadQuota } from "./photo-limits";
 import {
   generateDefaultHashtag,
@@ -180,17 +181,27 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   const id = normalizeEventId(eventId);
   if (!id) return null;
 
+  if (isDemoEventId(id)) {
+    return cacheEventLocally(getHardcodedDemoEvent());
+  }
+
+  const published = getPublicEvent(id);
+  if (published) {
+    return cacheEventLocally(published);
+  }
+
   const bootstrap = readBootstrapFromLocation();
   if (bootstrap && normalizeEventId(bootstrap.id) === id) {
     return cacheEventLocally(bootstrap);
   }
 
+  const sessionEvent = readEventFromSession(id);
+  if (sessionEvent) {
+    return cacheEventLocally(sessionEvent);
+  }
+
   const local = getEvents().find((e) => e.id === id);
   if (local) return local;
-
-  if (isDemoEventId(id)) {
-    return cacheEventLocally(getHardcodedDemoEvent());
-  }
 
   const remote = await fetchRemoteEvent(id);
   if (remote) {

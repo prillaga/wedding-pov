@@ -5,8 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
-import { parseEventCodeInput } from "@/lib/event-utils";
-import { extractCfgParam } from "@/lib/event-bootstrap";
+import { cacheEventInSession, extractCfgParam, buildJoinPath } from "@/lib/event-bootstrap";
+import { resolveEventInput } from "@/lib/event-utils";
 import { Camera, Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -20,18 +20,22 @@ export default function HomePage() {
   const [manualError, setManualError] = useState("");
 
   const goToEvent = (raw: string) => {
-    const eventId = parseEventCodeInput(raw);
+    const { eventId, embeddedEvent } = resolveEventInput(raw);
     if (!eventId) {
       setManualError("Enter an event code or paste your invitation link.");
       return;
     }
     setManualError("");
     setShowScanner(false);
+
+    if (embeddedEvent) {
+      cacheEventInSession(embeddedEvent);
+      router.push(buildJoinPath(eventId));
+      return;
+    }
+
     const cfg = extractCfgParam(raw);
-    const path = cfg
-      ? `/wedding/${encodeURIComponent(eventId)}?cfg=${encodeURIComponent(cfg)}`
-      : `/wedding/${encodeURIComponent(eventId)}`;
-    router.push(path);
+    router.push(buildJoinPath(eventId, cfg ?? undefined));
   };
 
   const handleScan = (raw: string) => {
@@ -108,7 +112,7 @@ export default function HomePage() {
                 setManualError("");
               }}
               onKeyDown={(e) => e.key === "Enter" && goToEvent(eventCode)}
-              placeholder="Event code or invitation link"
+              placeholder="Event code, portable code, or invitation link"
               className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
             />
             {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}

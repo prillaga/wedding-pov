@@ -4,8 +4,12 @@ import { useCallback, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/Button";
 import { getAppOrigin } from "@/lib/app-url";
-import { encodeEventBootstrap } from "@/lib/event-bootstrap";
-import { getEventJoinUrl, getEventShortCode } from "@/lib/event-utils";
+import { isDemoEventId } from "@/lib/demo-event";
+import {
+  encodeEventBootstrap,
+  getPortableEventCode,
+} from "@/lib/event-bootstrap";
+import { getEventJoinUrl } from "@/lib/event-utils";
 import { getEvent } from "@/lib/store";
 import { Copy, Download, Link2, Printer, Share2 } from "lucide-react";
 
@@ -66,9 +70,12 @@ export function EventQRCode({
 }: EventQRCodeProps) {
   const svgRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const [portableCopied, setPortableCopied] = useState(false);
   const event = getEvent(eventId);
-  const joinUrl = getEventJoinUrl(eventId, event ? encodeEventBootstrap(event) : undefined);
-  const shortCode = event ? getEventShortCode(event.settings) : eventId.slice(0, 6).toUpperCase();
+  const bootstrap =
+    event && !isDemoEventId(eventId) ? encodeEventBootstrap(event) : undefined;
+  const joinUrl = getEventJoinUrl(eventId, bootstrap);
+  const portableCode = event ? getPortableEventCode(event) : "";
   const displayLink = joinUrl.replace(/^https?:\/\//, "");
   const onLocalDev =
     typeof window !== "undefined" &&
@@ -125,6 +132,13 @@ export function EventQRCode({
     }
   };
 
+  const handleCopyPortable = async () => {
+    if (!portableCode) return;
+    await navigator.clipboard.writeText(portableCode);
+    setPortableCopied(true);
+    setTimeout(() => setPortableCopied(false), 2000);
+  };
+
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(joinUrl);
     setCopied(true);
@@ -137,7 +151,7 @@ export function EventQRCode({
         <QRCodeSVG
           value={joinUrl}
           size={size}
-          level="M"
+          level="L"
           marginSize={2}
           fgColor="#000000"
           bgColor="#FFFFFF"
@@ -158,9 +172,17 @@ export function EventQRCode({
         {!compact && (
           <div className="mt-4 space-y-2 text-left rounded-xl bg-blush/30 p-3 text-sm">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-warm-gray">Event ID</p>
-              <p className="font-mono text-champagne font-medium">{shortCode}</p>
+              <p className="text-[10px] uppercase tracking-wider text-warm-gray">Join Code</p>
+              <p className="font-mono text-champagne font-medium break-all">{eventId}</p>
             </div>
+            {portableCode && !isDemoEventId(eventId) && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-warm-gray">
+                  Portable Code (paste on any phone)
+                </p>
+                <p className="font-mono text-[10px] break-all text-charcoal">{portableCode}</p>
+              </div>
+            )}
             <div>
               <p className="text-[10px] uppercase tracking-wider text-warm-gray">Event Link</p>
               <p className="font-mono text-xs break-all text-charcoal">{displayLink}</p>
@@ -183,6 +205,11 @@ export function EventQRCode({
           <Button variant="gold" size="sm" onClick={handleCopyLink}>
             <Copy className="w-4 h-4" /> {copied ? "Copied!" : "Copy Link"}
           </Button>
+          {!isDemoEventId(eventId) && portableCode && (
+            <Button variant="secondary" size="sm" className="col-span-2" onClick={handleCopyPortable}>
+              <Copy className="w-4 h-4" /> {portableCopied ? "Portable code copied!" : "Copy Portable Code"}
+            </Button>
+          )}
         </div>
       )}
 

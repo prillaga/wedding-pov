@@ -1,7 +1,18 @@
 import type { EventSettings, EventStatus, WeddingEvent } from "@/types";
-import { getEventJoinUrl } from "./app-url";
+import { getHardcodedDemoEvent, isDemoEventId } from "@/lib/demo-event";
+import {
+  decodeEventBootstrap,
+  parsePortableEventCode,
+  readBootstrapFromUrl,
+} from "@/lib/event-bootstrap";
+import { resolveEventIdAlias } from "@/lib/public-events";
 
 export { getEventJoinUrl } from "./app-url";
+
+export interface ResolvedEventInput {
+  eventId: string;
+  embeddedEvent?: WeddingEvent;
+}
 
 export function slugifyName(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -11,8 +22,15 @@ export function parseEventCodeInput(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return "";
 
-  const compactMatch = trimmed.match(/^wedding-pov:(.+)$/i);
-  if (compactMatch?.[1]) return decodeURIComponent(compactMatch[1].trim());
+  const portable = parsePortableEventCode(trimmed);
+  if (portable) return portable.id;
+
+  const compactMatch = trimmed.match(/^wedding-pov:([A-Za-z0-9_-]+)$/i);
+  if (compactMatch?.[1]) {
+    const decoded = decodeEventBootstrap(compactMatch[1]);
+    if (decoded) return decoded.id;
+    return decodeURIComponent(compactMatch[1].trim());
+  }
 
   try {
     const url = trimmed.startsWith("http") ? new URL(trimmed) : new URL(trimmed, "https://weddingpov.local");
@@ -29,6 +47,36 @@ export function parseEventCodeInput(input: string): string {
   }
 
   return trimmed.replace(/^#/, "").split(/[?#]/)[0].trim();
+}
+
+/** Parse QR scans, links, portable codes, and manual entry into an event id. */
+export function resolveEventInput(raw: string): ResolvedEventInput {
+  const trimmed = raw.trim();
+  if (!trimmed) return { eventId: "" };
+
+  const portable = parsePortableEventCode(trimmed);
+  if (portable) {
+    return { eventId: portable.id, embeddedEvent: portable };
+  }
+
+  const fromUrl = readBootstrapFromUrl(trimmed);
+  if (fromUrl) {
+    return { eventId: fromUrl.id, embeddedEvent: fromUrl };
+  }
+
+  const parsed = parseEventCodeInput(trimmed);
+  if (!parsed) return { eventId: "" };
+
+  const aliased = resolveEventIdAlias(parsed);
+  if (isDemoEventId(aliased)) {
+    return { eventId: aliased, embeddedEvent: getHardcodedDemoEvent() };
+  }
+
+  return { eventId: aliased };
+}
+
+export function resolveEventIdFromInput(raw: string): string {
+  return resolveEventInput(raw).eventId;
 }
 
 export function generateEventSlug(

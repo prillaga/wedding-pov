@@ -32,5 +32,5 @@ export function getEventJoinUrl(eventId: string, bootstrap?: string): string {
   const id = decodeURIComponent(eventId).trim();
   const base = `${getAppOrigin()}/wedding/${encodeURIComponent(id)}`;
   if (!bootstrap) return base;
-  return `${base}?cfg=${encodeURIComponent(bootstrap)}`;
+  return `${base}?c=${bootstrap}`;
 }
