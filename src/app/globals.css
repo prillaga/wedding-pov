@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #fffef9;
+  color: #2c2c2c;
+  min-height: 100dvh;
+}
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+.wedding-shadow {
+  box-shadow: 0 4px 24px rgba(201, 169, 98, 0.12);
+}
+
+.luxury-shadow {
+  box-shadow:
+    0 4px 24px rgba(201, 169, 98, 0.1),
+    0 1px 3px rgba(44, 44, 44, 0.04);
+}
+
+.luxury-glass {
+  background: rgba(255, 254, 249, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.luxury-page-bg {
+  background-color: #fffef9;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201, 169, 98, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(245, 230, 224, 0.5), transparent),
+    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(232, 213, 163, 0.25), transparent);
+}
+
+.luxury-fabric {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a962' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.luxury-sparkles {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(201, 169, 98, 0.4), transparent),
+    radial-gradient(1px 1px at 80% 20%, rgba(201, 169, 98, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 60% 70%, rgba(232, 213, 163, 0.5), transparent),
+    radial-gradient(1px 1px at 40% 90%, rgba(201, 169, 98, 0.25), transparent);
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}

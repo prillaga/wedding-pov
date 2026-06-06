@@ -1,0 +1,54 @@
+"use client";
+
+import { Sparkles } from "lucide-react";
+
+interface SlideshowEmptyStateProps {
+  displayMode?: boolean;
+  fullscreen?: boolean;
+}
+
+export function SlideshowEmptyState({ displayMode, fullscreen }: SlideshowEmptyStateProps) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center text-center px-8 ${
+        displayMode || fullscreen
+          ? "h-screen bg-charcoal"
+          : "h-64 rounded-[28px] bg-gradient-to-br from-blush to-ivory border border-champagne/10"
+      }`}
+    >
+      <Sparkles
+        className={`mb-4 ${displayMode ? "w-10 h-10 text-champagne/40" : "w-8 h-8 text-champagne/50"}`}
+      />
+      <p
+        className={`font-serif ${displayMode ? "text-2xl text-ivory/70" : "text-lg text-charcoal"}`}
+      >
+        Waiting for guest photos…
+      </p>
+      <p className={`mt-2 max-w-xs leading-relaxed ${displayMode ? "text-ivory/40 text-sm" : "text-warm-gray text-xs"}`}>
+        As guests upload moments, they&apos;ll appear here automatically — no refresh needed.
+      </p>
+    </div>
+  );
+}
+
+export function SlideshowSkeleton({ displayMode, fullscreen }: SlideshowEmptyStateProps) {
+  return (
+    <div
+      className={`relative overflow-hidden animate-pulse ${
+        displayMode || fullscreen
+          ? "h-screen w-screen bg-charcoal"
+          : "rounded-[28px] aspect-[16/10] bg-charcoal/80 wedding-shadow"
+      }`}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-charcoal via-warm-gray/20 to-charcoal" />
+      <div className="absolute bottom-6 left-6 right-6 space-y-3">
+        <div className="h-6 w-48 rounded-full bg-white/10" />
+        <div className="h-4 w-32 rounded-full bg-white/10" />
+        <div className="h-3 w-24 rounded-full bg-champagne/20" />
+      </div>
+      <p className="absolute inset-0 flex items-center justify-center text-ivory/30 text-sm font-serif">
+        Loading wedding memories…
+      </p>
+    </div>
+  );
+}

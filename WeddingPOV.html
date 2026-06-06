@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Wedding POV</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #fffef9;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,169,98,0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(245,230,224,0.5), transparent);
+      color: #2c2c2c;
+      min-height: 100vh;
+    }
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+    .hero-bg {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 2rem;
+      background: linear-gradient(160deg, #f5e6e0, #fffef9 50%, #e8d5a3);
+      position: relative;
+    }
+    .hero-bg.dark { background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.65)), linear-gradient(160deg, #f5e6e0, #e8d5a3); color: #fff; }
+    .hashtag { color: #c9a962; letter-spacing: 0.25em; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 1rem; }
+    .hero-bg.dark .hashtag { color: #e8d5a3; }
+    h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem, 8vw, 3.5rem); font-weight: 600; margin-bottom: 0.5rem; }
+    .meta { opacity: 0.75; font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.6; }
+    .tagline { opacity: 0.8; font-size: 1rem; max-width: 320px; line-height: 1.6; margin-bottom: 2rem; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: #c9a962; color: #fff; border: none; padding: 1rem 2rem;
+      border-radius: 999px; font-size: 1rem; font-weight: 500; cursor: pointer;
+      font-family: inherit; min-width: 200px; position: relative; z-index: 100;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-outline { background: transparent; border: 1px solid #c9a962; color: #c9a962; }
+    .form-screen { padding: 2rem 1.5rem; max-width: 420px; margin: 0 auto; width: 100%; }
+    .form-screen h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .sub { color: #6b6560; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    label { display: block; font-size: 0.8rem; color: #6b6560; margin-bottom: 0.35rem; margin-top: 1rem; }
+    input {
+      width: 100%; padding: 0.85rem 1rem; border-radius: 1rem;
+      border: 1px solid rgba(201,169,98,0.25); background: #fff;
+      font-family: inherit; font-size: 1rem;
+    }
+    .preview-box {
+      margin-top: 1.25rem; padding: 1rem; border-radius: 1rem;
+      background: rgba(245,230,224,0.5); border: 1px solid rgba(201,169,98,0.15);
+      text-align: center;
+    }
+    .preview-box .name { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; }
+    .gold { color: #c9a962; }
+    /* ── Luxury Hub Dashboard ── */
+    .luxury-hub {
+      flex: 1; overflow-y: auto; padding-bottom: 6rem;
+      position: relative;
+    }
+    .luxury-hub::before {
+      content: '✿'; position: absolute; top: 4rem; left: -0.5rem;
+      font-size: 3rem; opacity: 0.04; pointer-events: none;
+    }
+    .luxury-hero {
+      margin: 1rem; border-radius: 32px; overflow: hidden;
+      min-height: 260px; position: relative;
+      box-shadow: 0 8px 32px rgba(201,169,98,0.15);
+      display: flex; flex-direction: column;
+    }
+    @media (min-width: 520px) { .luxury-hero { flex-direction: row; min-height: 280px; } }
+    .luxury-hero-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #f5e6e0, #fffef9 45%, #e8d5a3);
+    }
+    .luxury-hero-fabric {
+      position: absolute; inset: 0; opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c9a962' fill-opacity='0.06'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+    }
+    .luxury-hero-sparkle {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(1px 1px at 25% 35%, rgba(201,169,98,0.5), transparent),
+        radial-gradient(1.5px 1.5px at 75% 25%, rgba(201,169,98,0.35), transparent);
+    }
+    .luxury-hero-copy {
+      position: relative; z-index: 2; flex: 1; padding: 1.5rem;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .luxury-monogram {
+      width: 3.25rem; height: 3.25rem; border-radius: 50%;
+      border: 1px solid rgba(201,169,98,0.4); background: rgba(255,255,255,0.35);
+      backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif; font-size: 1rem; color: #c9a962;
+      letter-spacing: 0.15em; margin-bottom: 0.75rem;
+    }
+    .luxury-hero-copy .hashtag-sm {
+      font-size: 0.6rem; letter-spacing: 0.35em; text-transform: uppercase;
+      color: #c9a962; margin-bottom: 0.35rem;
+    }
+    .luxury-hero-copy h2 {
+      font-family: 'Cormorant Garamond', serif; font-size: clamp(1.75rem, 6vw, 2.25rem);
+      font-weight: 600; line-height: 1.15; color: #2c2c2c;
+    }
+    .luxury-subtitle { font-size: 0.85rem; color: #6b6560; font-style: italic; margin-top: 0.35rem; }
+    .luxury-date { font-size: 0.8rem; color: #6b6560; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.35rem; }
+    .luxury-guest-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 1rem;
+      padding: 0.45rem 1rem; border-radius: 999px;
+      background: rgba(255,254,249,0.72); backdrop-filter: blur(12px);
+      border: 1px solid rgba(201,169,98,0.2); font-family: 'Cormorant Garamond', serif; font-size: 0.95rem;
+    }
+    .luxury-hero-photo {
+      position: relative; min-height: 160px; flex: 0 0 42%;
+      background: linear-gradient(160deg, rgba(201,169,98,0.2), #f5e6e0);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .luxury-hero-photo-inner {
+      font-family: 'Cormorant Garamond', serif; font-size: 4rem; color: rgba(201,169,98,0.2);
+    }
+    .luxury-hero-photo::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(255,254,249,0.3), transparent);
+    }
+    .contribution-card {
+      margin: 0 1rem 1rem; padding: 1.25rem 1.5rem; border-radius: 28px;
+      background: rgba(255,254,249,0.72); backdrop-filter: blur(16px);
+      border: 1px solid rgba(201,169,98,0.15);
+      box-shadow: 0 4px 24px rgba(201,169,98,0.1);
+    }
+    .contribution-label {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.2em;
+      color: #6b6560; margin-bottom: 0.5rem;
+    }
+    .contribution-name { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; }
+    .contribution-count { font-size: 0.85rem; color: #2c2c2c; margin: 0.35rem 0 0.75rem; }
+    .progress-track {
+      height: 8px; border-radius: 999px; background: rgba(201,169,98,0.12);
+      overflow: hidden; margin-bottom: 0.35rem;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, #c9a962, #e8d5a3);
+      transition: width 0.6s ease;
+    }
+    .progress-blocks { font-size: 0.65rem; font-family: monospace; color: #6b6560; letter-spacing: 0.05em; }
+    .contribution-remaining { font-size: 0.8rem; color: #6b6560; margin-top: 0.5rem; }
+    .contribution-limit-msg {
+      margin-top: 0.75rem; padding: 0.75rem; border-radius: 16px;
+      background: rgba(255,255,255,0.6); border: 1px solid rgba(232,196,184,0.3);
+      text-align: center; font-size: 0.8rem; display: none;
+    }
+    .contribution-limit-msg.show { display: block; }
+    .contribution-limit-msg strong { font-family: 'Cormorant Garamond', serif; font-size: 1rem; display: block; margin-bottom: 0.25rem; }
+    .luxury-cards { padding: 0 1rem; display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 480px) { .luxury-cards { grid-template-columns: 1fr 1fr; } }
+    .luxury-card {
+      position: relative; overflow: hidden; border-radius: 28px; padding: 1.25rem 1.5rem;
+      background: rgba(255,254,249,0.72); backdrop-filter: blur(16px);
+      border: 1px solid rgba(201,169,98,0.12);
+      box-shadow: 0 4px 24px rgba(201,169,98,0.1);
+      cursor: pointer; transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .luxury-card:active { transform: scale(0.98); }
+    .luxury-card:hover { box-shadow: 0 12px 40px rgba(201,169,98,0.18); }
+    .luxury-card .floral { position: absolute; top: 0.5rem; right: 0.75rem; opacity: 0.15; font-size: 1rem; }
+    .luxury-card-emoji { font-size: 2rem; margin-bottom: 0.75rem; }
+    .luxury-card-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; }
+    .luxury-card-desc { font-size: 0.8rem; color: #6b6560; margin-top: 0.25rem; line-height: 1.4; }
+    .luxury-card-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 1rem;
+      padding: 0.55rem 1.1rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+      background: linear-gradient(90deg, #c9a962, #e8d5a3); color: #fff; border: none;
+      font-family: inherit; box-shadow: 0 4px 12px rgba(201,169,98,0.3);
+    }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.2rem;
+      padding: 0 1.25rem; margin: 1.5rem 0 0.75rem;
+    }
+    /* Floating luxury nav */
+    .luxury-nav-wrap {
+      position: fixed; bottom: 1rem; left: 1rem; right: 1rem; z-index: 100;
+      pointer-events: none;
+    }
+    .luxury-nav {
+      max-width: 420px; margin: 0 auto; pointer-events: auto;
+      display: flex; justify-content: space-around; padding: 0.5rem 0.25rem;
+      background: rgba(255,254,249,0.78); backdrop-filter: blur(16px);
+      border: 1px solid rgba(201,169,98,0.2); border-radius: 28px;
+      box-shadow: 0 8px 32px rgba(201,169,98,0.15);
+    }
+    .luxury-nav button {
+      background: none; border: none; font-family: inherit; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+      font-size: 0.6rem; color: #6b6560; padding: 0.4rem 0.6rem; border-radius: 16px;
+      min-width: 52px; transition: color 0.2s;
+    }
+    .luxury-nav button.active {
+      color: #c9a962; background: rgba(201,169,98,0.1);
+      border: 1px solid rgba(201,169,98,0.2);
+    }
+    .luxury-nav button .nav-icon { font-size: 1.1rem; }
+    .hub-header { padding: 1.5rem; border-bottom: 1px solid rgba(201,169,98,0.15); }
+    .hub-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; }
+    .badge {
+      display: inline-block; margin-top: 0.75rem; padding: 0.5rem 1rem;
+      background: #f5e6e0; border-radius: 999px; font-family: 'Cormorant Garamond', serif;
+    }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; padding: 1.5rem; flex: 1; }
+    .action {
+      padding: 1.25rem; border-radius: 1rem; background: #fff;
+      border: 1px solid rgba(201,169,98,0.1); cursor: pointer; text-align: left;
+    }
+    .action:active { background: #f5e6e0; }
+    .action-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .action-title { font-weight: 500; font-size: 0.95rem; }
+    .action-desc { font-size: 0.75rem; color: #6b6560; margin-top: 0.15rem; }
+    .nav {
+      display: flex; justify-content: space-around; padding: 0.75rem;
+      border-top: 1px solid rgba(201,169,98,0.15); background: rgba(255,255,255,0.9);
+      position: sticky; bottom: 0;
+    }
+    .nav button { background: none; border: none; font-size: 0.65rem; color: #6b6560; cursor: pointer; font-family: inherit; padding: 0.25rem; }
+    .nav button.active { color: #c9a962; }
+    .banner {
+      background: #2c2c2c; color: #fff; text-align: center; padding: 0.6rem 1rem;
+      font-size: 0.75rem; line-height: 1.4;
+    }
+    .banner strong { color: #c9a962; }
+    .gallery { padding: 1rem 1.5rem 6rem; }
+    .guest-card {
+      background: #fff; border-radius: 1rem; padding: 1rem; margin-bottom: 0.75rem;
+      border: 1px solid rgba(201,169,98,0.1);
+    }
+    .guest-card .count { font-size: 0.85rem; color: #c9a962; margin-top: 0.25rem; }
+    .back { background: none; border: none; color: #c9a962; cursor: pointer; font-family: inherit; font-size: 0.85rem; margin-bottom: 1rem; }
+    .camera-mock {
+      flex: 1; background: #2c2c2c; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: rgba(255,255,255,0.5);
+      min-height: 60vh;
+    }
+    .quota { background: rgba(0,0,0,0.4); color: #fff; padding: 0.75rem 1rem; border-radius: 1rem; font-size: 0.8rem; margin-bottom: 1rem; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+    .quota .quota-pov { color: #c9a962; font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; margin-bottom: 0.35rem; }
+    .quota .quota-count { font-weight: 500; margin-bottom: 0.2rem; }
+    .quota .quota-remaining { font-size: 0.7rem; opacity: 0.65; }
+    .camera-toast {
+      position: fixed; top: 5rem; left: 50%; transform: translateX(-50%);
+      background: rgba(26,26,26,0.95); color: #fff; padding: 0.75rem 1.25rem;
+      border-radius: 1rem; border: 1px solid rgba(201,169,98,0.35); font-size: 0.85rem;
+      z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .camera-toast.show { opacity: 1; }
+    .camera-limit-overlay {
+      position: fixed; inset: 0; z-index: 250; background: #fffef9;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 2rem;
+    }
+    .camera-limit-overlay.show { display: flex; }
+    .camera-limit-overlay h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .camera-limit-overlay p { color: #6b6560; margin-bottom: 1.5rem; line-height: 1.5; }
+    .camera-limit-overlay .btn-row { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; max-width: 280px; }
+    .shutter {
+      width: 72px; height: 72px; border-radius: 50%; border: 4px solid #fff;
+      background: rgba(255,255,255,0.15); cursor: pointer; margin-top: 2rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .shutter-inner { width: 56px; height: 56px; border-radius: 50%; background: #fffef9; }
+    .join-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 1rem;
+    }
+    .join-overlay.open { display: flex; }
+    .join-card {
+      background: #fff; border-radius: 1.5rem; padding: 1.5rem; width: 100%; max-width: 400px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .admin-link { position: fixed; bottom: 0.5rem; right: 0.5rem; z-index: 50; font-size: 0.65rem; color: rgba(255,255,255,0.35); background: none; border: none; cursor: pointer; font-family: inherit; }
+    .admin-panel { padding: 1rem 1.25rem 5rem; max-width: 480px; margin: 0 auto; }
+    .admin-tabs { display: flex; gap: 0.35rem; overflow-x: auto; margin-bottom: 1rem; }
+    .admin-tab { padding: 0.4rem 0.75rem; border-radius: 999px; border: 1px solid rgba(201,169,98,0.2); background: #fff; font-size: 0.7rem; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .admin-tab.active { background: #c9a962; color: #fff; border-color: #c9a962; }
+    .admin-section { display: none; }
+    .admin-section.active { display: block; }
+    .color-row { display: flex; align-items: center; justify-content: space-between; margin: 0.5rem 0; font-size: 0.8rem; }
+    .limit-btn { min-width: 2.5rem; padding: 0.4rem 0.6rem; border-radius: 0.75rem; border: 1px solid rgba(201,169,98,0.25); background: #fff; cursor: pointer; font-size: 0.8rem; font-family: inherit; margin: 0.15rem; }
+    .limit-btn.active { background: #c9a962; color: #fff; border-color: #c9a962; }
+    .preview-phone { border: 3px solid #2c2c2c; border-radius: 1.5rem; overflow: hidden; max-width: 200px; margin: 1rem auto; }
+    .preview-inner { height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1rem; color: #fff; }
+    .photo-preview {
+      flex: 1; display: flex; flex-direction: column; background: #1a1a1a; min-height: 60vh;
+    }
+    .photo-preview img {
+      flex: 1; object-fit: contain; max-height: 50vh; width: 100%; background: #000;
+    }
+    .preview-actions {
+      padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .preview-actions .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: none; padding: 0.75rem; border-radius: 999px; font-family: inherit; cursor: pointer; font-size: 0.85rem; }
+    .btn-danger { background: rgba(192,57,43,0.2); color: #e8c4b8; }
+    .my-upload-item {
+      display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem;
+      background: #fff; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid rgba(201,169,98,0.1);
+    }
+    .my-upload-item img { width: 56px; height: 56px; border-radius: 0.5rem; object-fit: cover; background: #f5e6e0; }
+    .slideshow-presentation {
+      position: fixed; inset: 0; z-index: 400; background: #000; display: none;
+      flex-direction: column; touch-action: manipulation;
+    }
+    .slideshow-presentation.active { display: flex; }
+    .slideshow-launch, .slideshow-stage { flex: 1; position: relative; width: 100%; height: 100%; }
+    .slideshow-launch {
+      display: none; align-items: center; justify-content: center; text-align: center;
+      padding: 2rem; cursor: pointer; background: #000; color: #fff;
+    }
+    .slideshow-launch.show { display: flex; }
+    .slideshow-stage { display: none; }
+    .slideshow-stage.show { display: block; }
+    .slideshow-photo {
+      position: absolute; inset: 0; opacity: 0; transition: opacity 0.9s ease;
+      background: #000;
+    }
+    .slideshow-photo.active { opacity: 1; }
+    .slideshow-photo img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .slideshow-photo .grad {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%, rgba(0,0,0,0.25) 100%);
+      pointer-events: none;
+    }
+    .slideshow-meta {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+      padding: 1.5rem 1.25rem 2rem; color: #fff; pointer-events: none;
+    }
+    .slideshow-meta .pov {
+      font-family: 'Cormorant Garamond', serif; font-size: clamp(1.5rem, 5vw, 3rem);
+      font-weight: 600; margin-bottom: 0.35rem;
+    }
+    .slideshow-meta .when {
+      color: rgba(201,169,98,0.95); font-size: clamp(0.85rem, 2.5vw, 1.25rem);
+    }
+    .slideshow-controls {
+      position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+      display: none; gap: 0.75rem; z-index: 5;
+    }
+    .slideshow-controls.show { display: flex; }
+    .slideshow-controls button, .slideshow-exit {
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.55);
+      color: #fff; border-radius: 999px; padding: 0.75rem 1rem; cursor: pointer;
+      backdrop-filter: blur(8px); font-family: inherit;
+    }
+    .slideshow-exit {
+      position: absolute; top: 1rem; right: 1rem; z-index: 5; display: none;
+      padding: 0.65rem 0.85rem; font-size: 1.1rem; line-height: 1;
+    }
+    .slideshow-exit.show, .slideshow-controls.show { display: flex; }
+    @media (orientation: landscape) {
+      .slideshow-meta { padding: 2rem 3rem 2.5rem; }
+      .slideshow-meta .pov { font-size: clamp(2rem, 4vw, 4.5rem); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="banner">
+    Opened in <strong>Safari/Chrome</strong> — not Cursor. Marshmallow is Cursor cloud sync, not this app.
+  </div>
+
+  <!-- HOME / COUPLE HERO -->
+  <div id="screen-home" class="screen active">
+    <div class="hero-bg dark">
+      <p class="hashtag">#JohnAndJane2027</p>
+      <h1>John & Jane</h1>
+      <p class="meta">Friday, June 20, 2027<br>The Garden Pavilion</p>
+      <p class="tagline">See the Wedding Through Every Guest's Eyes.</p>
+      <button type="button" class="btn" id="joinEventBtn">Join Event</button>
+    </div>
+    <button type="button" class="admin-link" id="adminLink" title="Admin Dashboard">⚙ Admin</button>
+  </div>
+
+  <!-- JOIN OVERLAY (same page — no navigation) -->
+  <div id="joinOverlay" class="join-overlay">
+    <div class="join-card">
+      <button type="button" class="back" id="joinBackBtn">← Back</button>
+      <h2>Welcome to Wedding POV</h2>
+      <p class="sub">Join John & Jane's wedding</p>
+      <label>First Name *</label>
+      <input id="firstName" placeholder="John" autocomplete="given-name" />
+      <label>Last Name *</label>
+      <input id="lastName" placeholder="Doe" autocomplete="family-name" />
+      <label>Relationship (optional)</label>
+      <input id="relationship" placeholder="College friend" />
+      <div class="preview-box">
+        <p style="font-size:0.75rem;color:#6b6560;margin-bottom:0.25rem">You'll appear as</p>
+        <p class="name"><span id="previewName">Your Name's</span> <span class="gold">POV</span></p>
+      </div>
+      <button type="button" class="btn" style="width:100%;margin-top:1.5rem" id="joinSubmitBtn">Join the Wedding</button>
+      <p id="joinError" style="color:#c0392b;font-size:0.85rem;margin-top:0.75rem;display:none"></p>
+    </div>
+  </div>
+
+  <!-- old join screen removed -->
+  <div id="screen-join" class="screen" style="display:none"></div>
+
+  <!-- EVENT HUB — Luxury Dashboard -->
+  <div id="screen-hub" class="screen">
+    <div class="luxury-hub">
+      <div class="luxury-hero">
+        <div class="luxury-hero-bg"></div>
+        <div class="luxury-hero-fabric"></div>
+        <div class="luxury-hero-sparkle"></div>
+        <div class="luxury-hero-copy">
+          <div class="luxury-monogram" id="hubMonogram">J · J</div>
+          <p class="hashtag-sm" id="hubHashtag">#JohnAndJane2027</p>
+          <h2 id="hubCouple">John & Jane</h2>
+          <p class="luxury-subtitle">Collaborative Wedding Story</p>
+          <p class="luxury-date">📅 Friday, June 20, 2027</p>
+          <div class="luxury-guest-badge">
+            ✨ <span id="guestBadge">Guest's POV</span>
+          </div>
+        </div>
+        <div class="luxury-hero-photo">
+          <span class="luxury-hero-photo-inner" id="hubPhotoMonogram">J·J</span>
+        </div>
+      </div>
+
+      <div class="contribution-card" id="contributionCard">
+        <p class="contribution-label">✨ Your Wedding Memories</p>
+        <p class="contribution-name" id="contribName">Guest's POV</p>
+        <p class="contribution-count"><strong id="contribUsed">0</strong> / <span id="contribMax">10</span> Photos Uploaded</p>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <p class="progress-blocks" id="progressBlocks">░░░░░░░░░░</p>
+        <p class="contribution-remaining" id="contribRemaining">Remaining: 10 Photos</p>
+        <div class="contribution-limit-msg" id="limitReachedMsg">
+          <strong>Photo Limit Reached</strong>
+          You have contributed the maximum number of photos for this event.<br>
+          Thank you for helping tell the wedding story.
+        </div>
+      </div>
+
+      <h3 class="section-title">Your Experience</h3>
+      <div class="luxury-cards">
+        <div class="luxury-card" onclick="showScreen('camera')">
+          <span class="floral">✿</span>
+          <div class="luxury-card-emoji">📸</div>
+          <div class="luxury-card-title">Take Photo</div>
+          <div class="luxury-card-desc">Capture your POV</div>
+          <span class="luxury-card-btn">Open Camera →</span>
+        </div>
+        <div class="luxury-card" onclick="showScreen('gallery')">
+          <span class="floral">✿</span>
+          <div class="luxury-card-emoji">🖼️</div>
+          <div class="luxury-card-title">Gallery</div>
+          <div class="luxury-card-desc">View all guest memories</div>
+          <span class="luxury-card-btn">View Gallery →</span>
+        </div>
+        <div class="luxury-card" onclick="openSlideshow(false)">
+          <span class="floral">✿</span>
+          <div class="luxury-card-emoji">✨</div>
+          <div class="luxury-card-title">Slideshow</div>
+          <div class="luxury-card-desc">Watch the live wedding story</div>
+          <span class="luxury-card-btn">Watch Slideshow →</span>
+        </div>
+        <div class="luxury-card" onclick="openSlideshow(true)">
+          <span class="floral">✿</span>
+          <div class="luxury-card-emoji">📺</div>
+          <div class="luxury-card-title">TV Display</div>
+          <div class="luxury-card-desc">Reception display mode</div>
+          <span class="luxury-card-btn">Start Display →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating luxury navigation (shared) -->
+  <div class="luxury-nav-wrap" id="luxuryNav" style="display:none">
+    <nav class="luxury-nav">
+      <button type="button" data-screen="hub" onclick="navTo('hub')"><span class="nav-icon">🏠</span>Home</button>
+      <button type="button" data-screen="camera" onclick="navTo('camera')"><span class="nav-icon">📸</span>Camera</button>
+      <button type="button" data-screen="gallery" onclick="navTo('gallery')"><span class="nav-icon">🖼</span>Gallery</button>
+      <button type="button" onclick="openSlideshow(false)"><span class="nav-icon">🎞</span>Slideshow</button>
+      <button type="button" data-screen="myuploads" onclick="navTo('myuploads')"><span class="nav-icon">👤</span>Profile</button>
+    </nav>
+  </div>
+
+  <!-- CAMERA -->
+  <div id="screen-camera" class="screen">
+    <div class="camera-mock">
+      <div class="quota" id="cameraQuota">
+        <div class="quota-pov" id="cameraQuotaPov">Your POV</div>
+        <div class="quota-count" id="quota">0 / 10 Photos Uploaded</div>
+        <div class="quota-remaining" id="cameraQuotaRemaining">Remaining: 10 Photos</div>
+      </div>
+      <p>In-app camera with filters</p>
+      <p style="font-size:0.8rem;margin-top:0.5rem">Warm Wedding · B&W · Vintage · Film</p>
+      <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
+    </div>
+  </div>
+
+  <div id="cameraToast" class="camera-toast">Photo uploaded successfully.</div>
+
+  <div id="cameraLimitReached" class="camera-limit-overlay">
+    <h2>Photo Limit Reached</h2>
+    <p id="cameraLimitMsg">You have uploaded 10 of 10 photos.</p>
+    <div class="btn-row">
+      <button type="button" class="btn" onclick="showScreen('gallery')">View Gallery</button>
+      <button type="button" class="btn-secondary" style="background:#c9a962;color:#fff;border-radius:999px;padding:0.75rem" onclick="openSlideshow(false)">Watch Slideshow</button>
+      <button type="button" class="btn-secondary" style="border-radius:999px;padding:0.75rem" onclick="showScreen('hub')">Back to Home</button>
+    </div>
+  </div>
+
+  <div id="postUploadAsk" class="camera-limit-overlay">
+    <h2>Photo uploaded successfully.</h2>
+    <p>What would you like to do next?</p>
+    <div class="btn-row">
+      <button type="button" class="btn" onclick="continueCamera()">Keep Taking Photos</button>
+      <button type="button" class="btn-secondary" style="border-radius:999px;padding:0.75rem" onclick="hidePostUploadAsk(); showScreen('gallery')">View Gallery</button>
+    </div>
+  </div>
+
+  <!-- PHOTO PREVIEW (before upload — does not count toward limit) -->
+  <div id="screen-preview" class="screen">
+    <div class="photo-preview">
+      <p style="text-align:center;color:#fff;font-size:0.7rem;padding:0.75rem;opacity:0.7">Photo Preview</p>
+      <canvas id="previewCanvas" width="400" height="300" style="display:none"></canvas>
+      <img id="previewImage" alt="Preview" />
+      <div class="preview-actions">
+        <input id="previewCaption" placeholder="Add a caption (optional)" style="width:100%;padding:0.75rem;border-radius:0.75rem;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-family:inherit" />
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" onclick="retakePhoto()">↺ Retake</button>
+          <button type="button" class="btn-secondary btn-danger" onclick="deletePreview()">🗑 Delete</button>
+        </div>
+        <button type="button" class="btn" style="width:100%" onclick="uploadPhoto()">↑ Upload Photo</button>
+        <p style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-align:center">Retake & delete do not count toward your limit</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY UPLOADS -->
+  <div id="screen-myuploads" class="screen">
+    <div class="gallery">
+      <button class="back" onclick="showScreen('hub')">← Back to Home</button>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:0.25rem">My Uploads</h2>
+      <p class="sub" id="myUploadsQuota">0 / 10 Photos</p>
+      <div id="myUploadsList"></div>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN SLIDESHOW PRESENTATION -->
+  <div id="slideshowPresentation" class="slideshow-presentation">
+    <div id="slideshowLaunch" class="slideshow-launch show" onclick="startSlideshowPresentation()">
+      <div>
+        <p style="font-size:2rem;margin-bottom:0.75rem">✨</p>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:clamp(1.75rem,5vw,2.5rem);margin-bottom:0.75rem" id="slideshowLaunchTitle">Wedding Slideshow</h2>
+        <p style="opacity:0.65;font-size:0.9rem;line-height:1.5;max-width:20rem;margin:0 auto 1.25rem" id="slideshowLaunchDesc">Tap to enter fullscreen presentation mode.</p>
+        <span class="btn" style="display:inline-block;padding:0.65rem 1.25rem;font-size:0.85rem">▶ Tap to Start</span>
+        <p style="opacity:0.35;font-size:0.7rem;margin-top:1rem">Tap anywhere for playback controls</p>
+      </div>
+    </div>
+    <div id="slideshowStage" class="slideshow-stage">
+      <div id="slideshowSlides"></div>
+      <div class="slideshow-meta">
+        <div class="pov" id="slideshowPov">John Doe's POV</div>
+        <div class="when" id="slideshowWhen">Ceremony • 3:42 PM</div>
+      </div>
+      <button type="button" class="slideshow-exit" id="slideshowExit" onclick="exitSlideshowPresentation(event)">✕</button>
+      <div class="slideshow-controls" id="slideshowControls">
+        <button type="button" onclick="slideshowPrev(event)">◀</button>
+        <button type="button" onclick="slideshowTogglePlay(event)" id="slideshowPlayBtn">⏸</button>
+        <button type="button" onclick="slideshowNext(event)">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALLERY -->
+  <div id="screen-gallery" class="screen">
+    <div class="gallery">
+      <button class="back" onclick="showScreen('hub')">← Back to Home</button>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:1rem">POV Gallery</h2>
+      <div class="guest-card"><strong>John Doe's POV</strong><div class="count">10 / 10 Photos</div></div>
+      <div class="guest-card"><strong>Jane Smith's POV</strong><div class="count">7 / 10 Photos</div></div>
+      <div class="guest-card"><strong>Michael Reyes' POV</strong><div class="count">8 / 10 Photos</div></div>
+      <div class="guest-card" id="yourGallery" style="display:none"><strong id="yourGalleryName">Your POV</strong><div class="count" id="yourGalleryCount">0 / 10 Photos</div></div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="screen-admin" class="screen">
+    <div class="admin-panel">
+      <button class="back" onclick="showScreen('home')">← Back</button>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:0.25rem">Admin Dashboard</h2>
+      <p class="sub">Customize theme, limits & branding — no coding</p>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="theme" onclick="setAdminTab('theme')">Theme</button>
+        <button class="admin-tab" data-tab="limits" onclick="setAdminTab('limits')">Photo Limits</button>
+        <button class="admin-tab" data-tab="event" onclick="setAdminTab('event')">Event</button>
+        <button class="admin-tab" data-tab="preview" onclick="setAdminTab('preview')">Preview</button>
+      </div>
+
+      <div id="admin-theme" class="admin-section active">
+        <p style="font-size:0.8rem;font-weight:500;margin-bottom:0.5rem">Theme Presets</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem">
+          <button class="limit-btn" onclick="applyPreset('white-gold')">White & Gold</button>
+          <button class="limit-btn" onclick="applyPreset('rose-gold')">Rose Gold</button>
+          <button class="limit-btn" onclick="applyPreset('sage-green')">Sage Green</button>
+          <button class="limit-btn" onclick="applyPreset('royal-blue')">Royal Blue</button>
+          <button class="limit-btn" onclick="applyPreset('black-gold')">Black & Gold</button>
+        </div>
+        <div class="color-row"><span>Primary</span><input type="color" id="colorPrimary" onchange="saveAdmin()" /></div>
+        <div class="color-row"><span>Accent / Button</span><input type="color" id="colorAccent" onchange="saveAdmin()" /></div>
+        <div class="color-row"><span>Homepage BG</span><input type="color" id="bgHomepage" onchange="saveAdmin()" /></div>
+        <div class="color-row"><span>Camera BG</span><input type="color" id="bgCamera" onchange="saveAdmin()" /></div>
+        <div class="color-row"><span>Gallery BG</span><input type="color" id="bgGallery" onchange="saveAdmin()" /></div>
+      </div>
+
+      <div id="admin-limits" class="admin-section">
+        <p style="font-size:0.8rem;margin-bottom:0.75rem">Photos per guest (default: 10)</p>
+        <div id="limitButtons"></div>
+        <label style="display:block;margin-top:1rem;font-size:0.8rem">
+          <input type="radio" name="limitAction" value="block" checked onchange="saveAdmin()" /> Block further uploads
+        </label>
+        <label style="display:block;margin-top:0.5rem;font-size:0.8rem">
+          <input type="radio" name="limitAction" value="extra" onchange="saveAdmin()" /> Mark as extra
+        </label>
+        <label style="display:block;margin-top:1rem;font-size:0.8rem">
+          <input type="checkbox" id="restoreSlot" checked onchange="saveAdmin()" /> Restore photo slot after delete
+        </label>
+        <p style="font-size:0.8rem;font-weight:500;margin-top:1.25rem;margin-bottom:0.5rem">Camera Settings — After Upload</p>
+        <label style="display:block;margin-top:0.35rem;font-size:0.8rem">
+          <input type="radio" name="afterUpload" value="stay-in-camera" checked onchange="saveAdmin()" /> Stay in Camera (Default)
+        </label>
+        <label style="display:block;margin-top:0.35rem;font-size:0.8rem">
+          <input type="radio" name="afterUpload" value="go-to-gallery" onchange="saveAdmin()" /> Go to Gallery
+        </label>
+        <label style="display:block;margin-top:0.35rem;font-size:0.8rem">
+          <input type="radio" name="afterUpload" value="ask-user" onchange="saveAdmin()" /> Ask User
+        </label>
+        <p id="limitNotice" style="font-size:0.75rem;color:#6b6560;margin-top:1rem;font-style:italic"></p>
+        <div style="margin-top:1rem;padding:0.75rem;border-radius:0.75rem;background:#2c2c2c;color:#fff;font-size:0.75rem">
+          <strong id="previewGuest">John Doe's POV</strong><br>
+          <span id="previewQuota">8 / 10 Photos Uploaded</span><br>
+          <span style="opacity:0.7">Remaining: <span id="previewRemaining">2</span> Photos</span>
+        </div>
+      </div>
+
+      <div id="admin-event" class="admin-section">
+        <label>Bride Name</label><input id="brideName" onchange="saveAdmin()" />
+        <label>Groom Name</label><input id="groomName" onchange="saveAdmin()" />
+        <label>Wedding Hashtag</label><input id="hashtag" onchange="saveAdmin()" />
+        <label>Venue</label><input id="venue" onchange="saveAdmin()" />
+        <label>Welcome Message</label><input id="welcomeMsg" onchange="saveAdmin()" />
+      </div>
+
+      <div id="admin-preview" class="admin-section">
+        <div class="preview-phone">
+          <div class="preview-inner" id="livePreview">
+            <p style="font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:0.5rem" id="prevHashtag">#JohnAndJane2027</p>
+            <p style="font-family:'Cormorant Garamond',serif;font-size:1.1rem" id="prevCouple">John & Jane</p>
+            <p style="font-size:0.6rem;opacity:0.8;margin-top:0.25rem">June 20, 2027</p>
+            <p style="font-size:0.55rem;opacity:0.7;margin:0.75rem 0">See the Wedding Through Every Guest's Eyes.</p>
+            <span style="padding:0.35rem 0.75rem;border-radius:999px;font-size:0.55rem" id="prevBtn">Join Event</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function possessive(name) {
+      name = (name || '').trim();
+      if (!name) return name;
+      if (/s$/i.test(name)) return name + "'";
+      return name + "'s";
+    }
+    function formatGuestPOV(name) {
+      return possessive(name || 'Guest') + ' POV';
+    }
+
+    const PRESETS = {
+      'white-gold': { primary: '#fffef9', accent: '#c9a962', homepage: '#f5e6e0', camera: '#0a0a0a', gallery: '#fffef9' },
+      'rose-gold': { primary: '#fff9f7', accent: '#b76e79', homepage: '#f5e0d8', camera: '#0a0a0a', gallery: '#fff9f7' },
+      'sage-green': { primary: '#fafbf8', accent: '#8a9a7b', homepage: '#e8ede4', camera: '#0a0a0a', gallery: '#fafbf8' },
+      'royal-blue': { primary: '#f8fafc', accent: '#1e3a5f', homepage: '#e2e8f0', camera: '#0a0a0a', gallery: '#f8fafc' },
+      'black-gold': { primary: '#1a1a1a', accent: '#d4af37', homepage: '#2c2c2c', camera: '#0a0a0a', gallery: '#1a1a1a' }
+    };
+    const LIMIT_OPTS = [1, 5, 10, 15, 20, 25, 50, 100, '∞'];
+
+    let guestName = '';
+    let photosUsed = 0;
+    let slotLocked = 0;
+    let myUploads = [];
+    let pendingPreview = null;
+    let adminConfig = loadAdmin();
+    let slideshowDisplayMode = false;
+    let slideshowIndex = 0;
+    let slideshowPlaying = true;
+    let slideshowTimer = null;
+    let slideshowControlsTimer = null;
+    let slideshowDeck = [];
+
+    function loadAdmin() {
+      try {
+        return JSON.parse(localStorage.getItem('wedding-pov-admin') || '{}');
+      } catch { return {}; }
+    }
+
+    function defaultAdmin() {
+      return {
+        preset: 'white-gold',
+        colors: PRESETS['white-gold'],
+        photoLimit: 10,
+        limitAction: 'block',
+        brideName: 'Jane', groomName: 'John',
+        hashtag: '#JohnAndJane2027', venue: 'The Garden Pavilion',
+        welcomeMsg: 'Welcome! Capture your favorite moments.',
+        restoreSlot: true,
+        afterUpload: 'stay-in-camera'
+      };
+    }
+
+    function mergeAdmin() {
+      return Object.assign(defaultAdmin(), adminConfig, { colors: Object.assign({}, defaultAdmin().colors, adminConfig.colors || {}) });
+    }
+
+    function saveAdmin() {
+      adminConfig = mergeAdmin();
+      adminConfig.colors.primary = document.getElementById('colorPrimary').value;
+      adminConfig.colors.accent = document.getElementById('colorAccent').value;
+      adminConfig.colors.homepage = document.getElementById('bgHomepage').value;
+      adminConfig.colors.camera = document.getElementById('bgCamera').value;
+      adminConfig.colors.gallery = document.getElementById('bgGallery').value;
+      adminConfig.brideName = document.getElementById('brideName').value;
+      adminConfig.groomName = document.getElementById('groomName').value;
+      adminConfig.hashtag = document.getElementById('hashtag').value;
+      adminConfig.venue = document.getElementById('venue').value;
+      adminConfig.welcomeMsg = document.getElementById('welcomeMsg').value;
+      adminConfig.photoLimit = window._photoLimit || adminConfig.photoLimit;
+      adminConfig.limitAction = document.querySelector('input[name="limitAction"]:checked')?.value || 'block';
+      adminConfig.restoreSlot = document.getElementById('restoreSlot')?.checked !== false;
+      adminConfig.afterUpload = document.querySelector('input[name="afterUpload"]:checked')?.value || 'stay-in-camera';
+      localStorage.setItem('wedding-pov-admin', JSON.stringify(adminConfig));
+      applyAdminToApp();
+    }
+
+    function applyPreset(name) {
+      adminConfig.preset = name;
+      adminConfig.colors = Object.assign({}, PRESETS[name]);
+      localStorage.setItem('wedding-pov-admin', JSON.stringify(mergeAdmin()));
+      initAdminForm();
+      applyAdminToApp();
+    }
+
+    function applyAdminToApp() {
+      const cfg = mergeAdmin();
+      const couple = cfg.groomName + ' & ' + cfg.brideName;
+      const mono = cfg.groomName[0] + ' · ' + cfg.brideName[0];
+      document.querySelector('.hero-bg .hashtag').textContent = cfg.hashtag;
+      document.querySelector('.hero-bg h1').textContent = couple;
+      document.querySelector('.hero-bg .meta').innerHTML = 'Friday, June 20, 2027<br>' + cfg.venue;
+      document.querySelector('.hero-bg').style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.65)), linear-gradient(160deg, ' + cfg.colors.homepage + ', ' + cfg.colors.primary + ')';
+      if (document.getElementById('hubCouple')) {
+        document.getElementById('hubCouple').textContent = couple;
+        document.getElementById('hubHashtag').textContent = cfg.hashtag;
+        document.getElementById('hubMonogram').textContent = mono;
+        document.getElementById('hubPhotoMonogram').textContent = cfg.groomName[0] + '·' + cfg.brideName[0];
+        document.querySelector('.luxury-hero-bg').style.background = 'linear-gradient(135deg, ' + cfg.colors.homepage + ', ' + cfg.colors.primary + ' 45%, ' + cfg.colors.homepage + ')';
+      }
+      document.body.style.background = cfg.colors.primary;
+      document.querySelectorAll('.btn').forEach(function(b) { b.style.background = cfg.colors.accent; });
+      document.querySelectorAll('.luxury-card-btn').forEach(function(b) { b.style.background = 'linear-gradient(90deg, ' + cfg.colors.accent + ', #e8d5a3)'; });
+      document.querySelector('.camera-mock').style.background = cfg.colors.camera;
+      document.getElementById('limitNotice').textContent = '"You have reached your upload limit of ' + cfg.photoLimit + ' photos."';
+      document.getElementById('previewQuota').textContent = '8 / ' + cfg.photoLimit + ' Photos Uploaded';
+      document.getElementById('previewRemaining').textContent = Math.max(0, cfg.photoLimit - 8);
+      document.getElementById('previewGuest').textContent = "John Doe's POV";
+      var prev = document.getElementById('livePreview');
+      if (prev) {
+        prev.style.background = 'linear-gradient(160deg, ' + cfg.colors.homepage + ', ' + cfg.colors.primary + ')';
+        document.getElementById('prevHashtag').textContent = cfg.hashtag;
+        document.getElementById('prevHashtag').style.color = cfg.colors.accent;
+        document.getElementById('prevCouple').textContent = couple;
+        document.getElementById('prevBtn').style.background = cfg.colors.accent;
+      }
+      window._photoLimit = cfg.photoLimit;
+      updateQuotaDisplay();
+    }
+
+    function initAdminForm() {
+      const cfg = mergeAdmin();
+      document.getElementById('colorPrimary').value = cfg.colors.primary;
+      document.getElementById('colorAccent').value = cfg.colors.accent;
+      document.getElementById('bgHomepage').value = cfg.colors.homepage;
+      document.getElementById('bgCamera').value = cfg.colors.camera;
+      document.getElementById('bgGallery').value = cfg.colors.gallery;
+      document.getElementById('brideName').value = cfg.brideName;
+      document.getElementById('groomName').value = cfg.groomName;
+      document.getElementById('hashtag').value = cfg.hashtag;
+      document.getElementById('venue').value = cfg.venue;
+      document.getElementById('welcomeMsg').value = cfg.welcomeMsg;
+      if (document.getElementById('restoreSlot')) document.getElementById('restoreSlot').checked = cfg.restoreSlot !== false;
+      var afterUpload = cfg.afterUpload || 'stay-in-camera';
+      document.querySelectorAll('input[name="afterUpload"]').forEach(function(r) {
+        r.checked = r.value === afterUpload;
+      });
+      window._photoLimit = cfg.photoLimit;
+      var container = document.getElementById('limitButtons');
+      container.innerHTML = '';
+      LIMIT_OPTS.forEach(function(n) {
+        var val = n === '∞' ? 9999 : n;
+        var btn = document.createElement('button');
+        btn.className = 'limit-btn' + (cfg.photoLimit === val || (n === '∞' && cfg.photoLimit >= 9999) ? ' active' : '');
+        btn.textContent = n;
+        btn.onclick = function() {
+          window._photoLimit = val;
+          document.querySelectorAll('#limitButtons .limit-btn').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          saveAdmin();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function setAdminTab(tab) {
+      document.querySelectorAll('.admin-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
+      document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById('admin-' + tab).classList.add('active');
+    }
+
+    document.getElementById('adminLink').addEventListener('click', function() {
+      initAdminForm();
+      showScreen('admin');
+    });
+
+    initAdminForm();
+    applyAdminToApp();
+    updateQuotaDisplay();
+
+    function buildSlideshowDeck() {
+      var deck = [];
+      myUploads.forEach(function(u) {
+        deck.push({
+          data: u.data,
+          guest: guestName || 'Guest',
+          segment: 'Guest POV',
+          time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        });
+      });
+      if (!deck.length) {
+        var samples = [
+          { guest: 'John Doe', segment: 'Ceremony', hue: 35 },
+          { guest: 'Jane Smith', segment: 'Reception', hue: 320 },
+          { guest: 'Michael Reyes', segment: 'Guest POV', hue: 160 }
+        ];
+        samples.forEach(function(s, i) {
+          var c = document.createElement('canvas');
+          c.width = 800; c.height = 600;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = 'hsl(' + s.hue + ', 28%, 72%)';
+          ctx.fillRect(0, 0, 800, 600);
+          ctx.fillStyle = '#2c2c2c';
+          ctx.font = 'italic 28px Georgia';
+          ctx.textAlign = 'center';
+          ctx.fillText('Wedding Moment', 400, 280);
+          deck.push({
+            data: c.toDataURL('image/jpeg', 0.85),
+            guest: s.guest,
+            segment: s.segment,
+            time: new Date(Date.now() - i * 3600000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          });
+        });
+      }
+      return deck;
+    }
+
+    function openSlideshow(tvMode) {
+      slideshowDisplayMode = !!tvMode;
+      document.getElementById('slideshowLaunchTitle').textContent = tvMode ? 'Reception Display Mode' : 'Wedding Slideshow';
+      document.getElementById('slideshowLaunchDesc').textContent = tvMode
+        ? 'Connect to a TV or projector. Tap to start fullscreen presentation.'
+        : 'Tap to enter fullscreen presentation mode.';
+      document.getElementById('slideshowLaunch').classList.add('show');
+      document.getElementById('slideshowStage').classList.remove('show');
+      document.getElementById('slideshowPresentation').classList.add('active');
+      document.getElementById('luxuryNav').style.display = 'none';
+      slideshowDeck = buildSlideshowDeck();
+    }
+
+    function startSlideshowPresentation() {
+      document.getElementById('slideshowLaunch').classList.remove('show');
+      document.getElementById('slideshowStage').classList.add('show');
+      var container = document.getElementById('slideshowSlides');
+      container.innerHTML = '';
+      slideshowDeck.forEach(function(slide, i) {
+        var div = document.createElement('div');
+        div.className = 'slideshow-photo' + (i === 0 ? ' active' : '');
+        div.innerHTML = '<img src="' + slide.data + '" alt="" /><div class="grad"></div>';
+        container.appendChild(div);
+      });
+      slideshowIndex = 0;
+      slideshowPlaying = true;
+      updateSlideshowMeta();
+      startSlideshowTimer();
+      showSlideshowControls();
+      var root = document.getElementById('slideshowPresentation');
+      if (root.requestFullscreen) root.requestFullscreen().catch(function(){});
+    }
+
+    function exitSlideshowPresentation(e) {
+      if (e) e.stopPropagation();
+      clearInterval(slideshowTimer);
+      clearTimeout(slideshowControlsTimer);
+      document.getElementById('slideshowPresentation').classList.remove('active');
+      if (document.fullscreenElement) document.exitFullscreen().catch(function(){});
+      showScreen('hub');
+    }
+
+    function updateSlideshowMeta() {
+      var slide = slideshowDeck[slideshowIndex];
+      if (!slide) return;
+      document.getElementById('slideshowPov').textContent = formatGuestPOV(slide.guest);
+      document.getElementById('slideshowWhen').textContent = slide.segment + ' • ' + slide.time;
+      document.querySelectorAll('.slideshow-photo').forEach(function(el, i) {
+        el.classList.toggle('active', i === slideshowIndex);
+      });
+    }
+
+    function slideshowNext(e) {
+      if (e) e.stopPropagation();
+      if (!slideshowDeck.length) return;
+      slideshowIndex = (slideshowIndex + 1) % slideshowDeck.length;
+      updateSlideshowMeta();
+      showSlideshowControls();
+    }
+
+    function slideshowPrev(e) {
+      if (e) e.stopPropagation();
+      if (!slideshowDeck.length) return;
+      slideshowIndex = (slideshowIndex - 1 + slideshowDeck.length) % slideshowDeck.length;
+      updateSlideshowMeta();
+      showSlideshowControls();
+    }
+
+    function slideshowTogglePlay(e) {
+      if (e) e.stopPropagation();
+      slideshowPlaying = !slideshowPlaying;
+      document.getElementById('slideshowPlayBtn').textContent = slideshowPlaying ? '⏸' : '▶';
+      if (slideshowPlaying) startSlideshowTimer();
+      else clearInterval(slideshowTimer);
+      showSlideshowControls();
+    }
+
+    function startSlideshowTimer() {
+      clearInterval(slideshowTimer);
+      if (!slideshowPlaying) return;
+      slideshowTimer = setInterval(function() { slideshowNext(); }, 5000);
+    }
+
+    function showSlideshowControls() {
+      document.getElementById('slideshowControls').classList.add('show');
+      document.getElementById('slideshowExit').classList.add('show');
+      clearTimeout(slideshowControlsTimer);
+      slideshowControlsTimer = setTimeout(function() {
+        document.getElementById('slideshowControls').classList.remove('show');
+        document.getElementById('slideshowExit').classList.remove('show');
+      }, 3000);
+    }
+
+    document.getElementById('slideshowStage').addEventListener('click', function() {
+      if (document.getElementById('slideshowStage').classList.contains('show')) showSlideshowControls();
+    });
+
+    function showScreen(name) {
+      document.getElementById('slideshowPresentation').classList.remove('active');
+      if (document.fullscreenElement) document.exitFullscreen().catch(function(){});
+      document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById('screen-' + name).classList.add('active');
+      if (name !== 'camera') {
+        hideCameraLimitReached();
+        hidePostUploadAsk();
+      }
+      var navScreens = ['hub', 'camera', 'gallery', 'myuploads', 'preview'];
+      var nav = document.getElementById('luxuryNav');
+      if (nav) nav.style.display = navScreens.indexOf(name) >= 0 || name === 'preview' ? 'block' : 'none';
+      if (name === 'preview') nav.style.display = 'block';
+      document.querySelectorAll('.luxury-nav button[data-screen]').forEach(function(btn) {
+        var s = btn.getAttribute('data-screen');
+        btn.classList.toggle('active', s === name || (name === 'preview' && s === 'camera'));
+      });
+    }
+
+    function navTo(name) {
+      showScreen(name);
+    }
+
+    document.getElementById('joinEventBtn').addEventListener('click', function() {
+      document.getElementById('joinOverlay').classList.add('open');
+    });
+    document.getElementById('joinBackBtn').addEventListener('click', function() {
+      document.getElementById('joinOverlay').classList.remove('open');
+    });
+    document.getElementById('joinSubmitBtn').addEventListener('click', joinWedding);
+
+    ['firstName','lastName'].forEach(function(id) {
+      document.getElementById(id).addEventListener('input', updatePreview);
+    });
+
+    function updatePreview() {
+      const f = document.getElementById('firstName').value.trim();
+      const l = document.getElementById('lastName').value.trim();
+      document.getElementById('previewName').textContent = f && l ? possessive(f + ' ' + l) : "Your Name's";
+    }
+
+    function joinWedding() {
+      const f = document.getElementById('firstName').value.trim();
+      const l = document.getElementById('lastName').value.trim();
+      const err = document.getElementById('joinError');
+      if (!f || !l) {
+        err.textContent = 'Please enter your first and last name';
+        err.style.display = 'block';
+        return;
+      }
+      err.style.display = 'none';
+      guestName = f + ' ' + l;
+      document.getElementById('guestBadge').textContent = formatGuestPOV(guestName);
+      document.getElementById('contribName').textContent = formatGuestPOV(guestName);
+      document.getElementById('yourGalleryName').textContent = formatGuestPOV(guestName);
+      document.getElementById('yourGallery').style.display = 'block';
+      document.getElementById('joinOverlay').classList.remove('open');
+      updateQuotaDisplay();
+      showScreen('hub');
+    }
+
+    function effectiveUsed() {
+      return photosUsed + slotLocked;
+    }
+
+    function updateQuotaDisplay() {
+      var limit = window._photoLimit || 10;
+      var maxLabel = limit >= 9999 ? '∞' : limit;
+      var used = effectiveUsed();
+      document.getElementById('quota').textContent = used + ' / ' + maxLabel + ' Photos Uploaded';
+      if (document.getElementById('cameraQuotaPov')) {
+        document.getElementById('cameraQuotaPov').textContent = guestName ? formatGuestPOV(guestName) : 'Your POV';
+      }
+      if (document.getElementById('cameraQuotaRemaining')) {
+        var remaining = limit >= 9999 ? '∞' : Math.max(0, limit - used);
+        document.getElementById('cameraQuotaRemaining').textContent = limit >= 9999
+          ? 'Unlimited uploads'
+          : 'Remaining: ' + remaining + ' Photo' + (remaining === 1 ? '' : 's');
+      }
+      document.getElementById('yourGalleryCount').textContent = used + ' / ' + maxLabel + ' Photos';
+      document.getElementById('myUploadsQuota').textContent = used + ' / ' + maxLabel + ' Photos Uploaded';
+      var pct = limit >= 9999 ? 0 : Math.min(100, (used / limit) * 100);
+      var filled = Math.round(pct / 10);
+      if (document.getElementById('contribUsed')) {
+        document.getElementById('contribUsed').textContent = used;
+        document.getElementById('contribMax').textContent = maxLabel;
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressBlocks').textContent = '█'.repeat(filled) + '░'.repeat(10 - filled);
+        var remaining = limit >= 9999 ? '∞' : Math.max(0, limit - used);
+        document.getElementById('contribRemaining').textContent = limit >= 9999 ? 'Unlimited uploads' : 'Remaining: ' + remaining + ' Photo' + (remaining === 1 ? '' : 's');
+        var atLimit = limit < 9999 && used >= limit;
+        document.getElementById('limitReachedMsg').classList.toggle('show', atLimit);
+        document.getElementById('contribRemaining').style.display = atLimit ? 'none' : 'block';
+        if (guestName) document.getElementById('contribName').textContent = formatGuestPOV(guestName);
+      }
+    }
+
+    function renderMyUploads() {
+      var list = document.getElementById('myUploadsList');
+      list.innerHTML = '';
+      if (!myUploads.length) {
+        list.innerHTML = '<p class="sub">No uploads yet. Take a photo to get started.</p>';
+        return;
+      }
+      myUploads.forEach(function(u, i) {
+        var row = document.createElement('div');
+        row.className = 'my-upload-item';
+        row.innerHTML = '<img src="' + u.data + '" alt="" /><div style="flex:1"><strong>Photo ' + (myUploads.length - i) + '</strong>' +
+          (u.caption ? '<div style="font-size:0.75rem;color:#6b6560">' + u.caption + '</div>' : '') +
+          '</div><button type="button" class="btn-secondary btn-danger" style="padding:0.4rem 0.75rem;font-size:0.7rem" onclick="deleteUpload(' + i + ')">Delete</button>';
+        list.appendChild(row);
+      });
+    }
+
+    function showCameraSuccessToast(message) {
+      var toast = document.getElementById('cameraToast');
+      toast.textContent = message || 'Photo uploaded successfully.';
+      toast.classList.add('show');
+      setTimeout(function() { toast.classList.remove('show'); }, 3000);
+    }
+
+    function showCameraLimitReached() {
+      var limit = window._photoLimit || 10;
+      document.getElementById('cameraLimitMsg').textContent = 'You have uploaded ' + effectiveUsed() + ' of ' + limit + ' photos.';
+      document.getElementById('cameraLimitReached').classList.add('show');
+    }
+
+    function hideCameraLimitReached() {
+      document.getElementById('cameraLimitReached').classList.remove('show');
+    }
+
+    function showPostUploadAsk() {
+      document.getElementById('postUploadAsk').classList.add('show');
+    }
+
+    function hidePostUploadAsk() {
+      document.getElementById('postUploadAsk').classList.remove('show');
+    }
+
+    function continueCamera() {
+      hidePostUploadAsk();
+      showCameraSuccessToast('Photo uploaded successfully.');
+      showScreen('camera');
+    }
+
+    function capturePhoto() {
+      var limit = window._photoLimit || 10;
+      if (limit < 9999 && effectiveUsed() >= limit) {
+        showCameraLimitReached();
+        return;
+      }
+      hideCameraLimitReached();
+      var canvas = document.getElementById('previewCanvas');
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'hsl(' + (40 + photosUsed * 20) + ', 35%, 75%)';
+      ctx.fillRect(0, 0, 400, 300);
+      ctx.fillStyle = '#2c2c2c';
+      ctx.font = 'italic 16px Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText('Wedding Moment', 200, 140);
+      ctx.font = '13px sans-serif';
+      ctx.fillStyle = '#6b6560';
+      ctx.fillText(formatGuestPOV(guestName), 200, 170);
+      pendingPreview = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('previewImage').src = pendingPreview;
+      document.getElementById('previewCaption').value = '';
+      showScreen('preview');
+    }
+
+    function retakePhoto() {
+      pendingPreview = null;
+      showScreen('camera');
+    }
+
+    function deletePreview() {
+      pendingPreview = null;
+      showScreen('camera');
+    }
+
+    function uploadPhoto() {
+      if (!pendingPreview) return;
+      var limit = window._photoLimit || 10;
+      if (limit < 9999 && effectiveUsed() >= limit) {
+        showCameraLimitReached();
+        return;
+      }
+      myUploads.unshift({ data: pendingPreview, caption: document.getElementById('previewCaption').value.trim() });
+      photosUsed++;
+      pendingPreview = null;
+      updateQuotaDisplay();
+      renderMyUploads();
+
+      var cfg = mergeAdmin();
+      var afterUpload = cfg.afterUpload || 'stay-in-camera';
+
+      if (limit < 9999 && effectiveUsed() >= limit) {
+        showScreen('camera');
+        showCameraLimitReached();
+        return;
+      }
+
+      if (afterUpload === 'go-to-gallery') {
+        showScreen('gallery');
+        return;
+      }
+      if (afterUpload === 'ask-user') {
+        showScreen('camera');
+        showPostUploadAsk();
+        return;
+      }
+
+      showScreen('camera');
+      showCameraSuccessToast('Photo uploaded successfully.');
+    }
+
+    function deleteUpload(index) {
+      var cfg = mergeAdmin();
+      var restore = cfg.restoreSlot !== false;
+      if (!confirm(restore ? 'Delete this photo? Your upload slot will be restored.' : 'Delete this photo? Slot will NOT be restored.')) return;
+      myUploads.splice(index, 1);
+      if (restore) photosUsed = Math.max(0, photosUsed - 1);
+      else slotLocked++;
+      updateQuotaDisplay();
+      renderMyUploads();
+    }
+  </script>
+</body>
+</html>
