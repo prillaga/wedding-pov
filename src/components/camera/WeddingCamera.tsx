@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Select } from "@/components/ui/Input";
 import { CameraSuccessToast } from "@/components/camera/CameraSuccessToast";
 import { LimitReachedScreen } from "@/components/camera/LimitReachedScreen";
@@ -36,6 +35,8 @@ interface WeddingCameraProps {
   onLimitBack?: () => void;
 }
 
+const IOS_CAMERA_RELEASE_MS = 150;
+
 export function WeddingCamera({
   eventId,
   guest,
@@ -46,6 +47,7 @@ export function WeddingCamera({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const startingRef = useRef(false);
 
   const [active, setActive] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
@@ -67,6 +69,7 @@ export function WeddingCamera({
   const guestName = `${guest.firstName} ${guest.lastName}`;
   const photoMgmt = event?.photoManagement;
   const isReplaceMode = Boolean(replaceUploadId && photoMgmt?.replaceUploadedPhotos);
+  const showingPreview = Boolean(captured && photoMgmt);
 
   const uploads = useMemo(
     () => getAllUploadsForQuota(eventId),
@@ -110,6 +113,73 @@ export function WeddingCamera({
     };
   }, []);
 
+  const stopStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    const video = videoRef.current;
+    if (video) {
+      video.srcObject = null;
+    }
+    setActive(false);
+  }, []);
+
+  const attachStream = useCallback(async (stream: MediaStream) => {
+    const video = videoRef.current;
+    if (!video) return false;
+
+    streamRef.current = stream;
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
+    try {
+      await video.play();
+      setActive(true);
+      return true;
+    } catch {
+      setActive(false);
+      return false;
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    if (startingRef.current || blocked || showingPreview) return;
+    startingRef.current = true;
+
+    try {
+      stopStream();
+      await new Promise((resolve) => setTimeout(resolve, IOS_CAMERA_RELEASE_MS));
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: mode === "video",
+      });
+
+      const attached = await attachStream(stream);
+      if (!attached) {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    } catch {
+      setActive(false);
+      alert("Camera access is required to capture wedding moments.");
+    } finally {
+      startingRef.current = false;
+    }
+  }, [attachStream, blocked, facingMode, mode, showingPreview, stopStream]);
+
+  useEffect(() => {
+    if (blocked || showingPreview) {
+      stopStream();
+      return;
+    }
+
+    void startCamera();
+    return () => {
+      stopStream();
+    };
+  }, [blocked, facingMode, mode, showingPreview, startCamera, stopStream]);
+
   const handleAfterUpload = useCallback(
     (behavior: AfterUploadBehavior) => {
       if (isReplaceMode) {
@@ -133,50 +203,27 @@ export function WeddingCamera({
     [isReplaceMode, onNavigate, showSuccess]
   );
 
-  const startCamera = useCallback(async () => {
-    try {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: mode === "video",
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setActive(true);
-    } catch {
-      alert("Camera access is required to capture wedding moments.");
-    }
-  }, [facingMode, mode]);
-
-  useEffect(() => {
-    if (!blocked && !captured) startCamera();
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, [startCamera, blocked, captured]);
-
   const capturePhoto = () => {
     if (!isReplaceMode && !uploadCheck.allowed && !uploadCheck.markAsExtra) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas || !video.videoWidth) return;
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     ctx.filter = filterCss;
     ctx.drawImage(video, 0, 0);
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    setActive(false);
+    stopStream();
     setCaptured(canvas.toDataURL("image/jpeg", 0.92));
   };
 
   const startRecording = () => {
     if (!isReplaceMode && !uploadCheck.allowed && !uploadCheck.markAsExtra) return;
     if (!streamRef.current) return;
+
     chunksRef.current = [];
     const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
     mediaRecorderRef.current = recorder;
@@ -185,8 +232,7 @@ export function WeddingCamera({
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       const reader = new FileReader();
       reader.onload = () => {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        setActive(false);
+        stopStream();
         setCaptured(reader.result as string);
       };
       reader.readAsDataURL(blob);
@@ -233,9 +279,9 @@ export function WeddingCamera({
     }
 
     setUploading(false);
-    setCaptured(null);
     setCaption("");
     setUploadTick((t) => t + 1);
+    setCaptured(null);
 
     const behavior = photoMgmt?.afterUploadBehavior ?? "stay-in-camera";
 
@@ -249,18 +295,15 @@ export function WeddingCamera({
   };
 
   const retake = () => {
-    setCaptured(null);
     setCaption("");
-    startCamera();
+    setCaptured(null);
   };
 
   const discardPreview = () => {
-    setCaptured(null);
     setCaption("");
+    setCaptured(null);
     if (isReplaceMode && onLimitBack) {
       onLimitBack();
-    } else {
-      startCamera();
     }
   };
 
@@ -282,100 +325,107 @@ export function WeddingCamera({
 
   return (
     <div
-      className="relative flex flex-col h-full"
+      className="relative flex flex-col h-full min-h-dvh"
       style={{ background: event?.theme.screenBackgrounds.camera ?? "#0A0A0A" }}
     >
       <canvas ref={canvasRef} className="hidden" />
 
-      <AnimatePresence mode="wait">
-        {captured && photoMgmt ? (
-          <PhotoPreviewScreen
-            key="preview"
-            guest={guest}
-            imageData={captured}
-            isVideo={mode === "video"}
-            filter={filter}
-            caption={caption}
-            markAsExtra={uploadCheck.markAsExtra}
-            replaceMode={isReplaceMode}
-            settings={photoMgmt}
-            uploading={uploading}
-            onFilterChange={setFilter}
-            onCaptionChange={setCaption}
-            onImageChange={setCaptured}
-            onRetake={retake}
-            onDelete={discardPreview}
-            onUpload={upload}
+      <div className="relative flex-1 flex flex-col min-h-0">
+        {isReplaceMode && !showingPreview && (
+          <div className="px-4 py-2 bg-champagne/20 text-center text-xs text-ivory shrink-0">
+            Replacing photo — count stays the same
+          </div>
+        )}
+
+        <div className="relative flex-1 overflow-hidden min-h-0">
+          {successMessage && <CameraSuccessToast message={successMessage} />}
+          {showPostUploadPrompt && (
+            <PostUploadPrompt
+              onContinueCamera={() => {
+                setShowPostUploadPrompt(false);
+                showSuccess("Photo uploaded successfully.");
+              }}
+              onViewGallery={() => {
+                setShowPostUploadPrompt(false);
+                onNavigate?.("gallery");
+              }}
+            />
+          )}
+
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover ${
+              showingPreview ? "invisible pointer-events-none" : ""
+            }`}
+            style={{ filter: filterCss }}
           />
-        ) : (
-          <motion.div
-            key="camera"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex-1 flex flex-col"
-          >
-            {isReplaceMode && (
-              <div className="px-4 py-2 bg-champagne/20 text-center text-xs text-ivory">
-                Replacing photo — count stays the same
-              </div>
-            )}
-            <div className="relative flex-1 overflow-hidden">
-              {successMessage && <CameraSuccessToast message={successMessage} />}
-              {showPostUploadPrompt && (
-                <PostUploadPrompt
-                  onContinueCamera={() => {
-                    setShowPostUploadPrompt(false);
-                    showSuccess("Photo uploaded successfully.");
-                  }}
-                  onViewGallery={() => {
-                    setShowPostUploadPrompt(false);
-                    onNavigate?.("gallery");
-                  }}
-                />
-              )}
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ filter: filterCss }}
-              />
-              {!active && (
-                <div className="absolute inset-0 flex items-center justify-center bg-charcoal">
-                  <Camera className="w-12 h-12 text-champagne animate-pulse" />
-                </div>
-              )}
-              <div className="absolute top-4 left-4 right-4 space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                  {!isReplaceMode ? (
-                    <UploadIndicator guestName={guestName} quota={uploadCheck.quota} compact />
-                  ) : (
-                    <span className="text-xs text-ivory/70 px-3 py-2 rounded-full bg-black/40">
-                      Replace mode
-                    </span>
-                  )}
-                  <div className="flex gap-2 shrink-0">
-                    <Link
-                      href={`/event/${eventId}/my-uploads`}
-                      className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
-                    >
-                      <FolderOpen className="w-5 h-5" />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFacingMode((f) => (f === "user" ? "environment" : "user"))
-                      }
-                      className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
-                    >
-                      <FlipHorizontal className="w-5 h-5" />
-                    </button>
-                  </div>
+
+          {!active && !showingPreview && (
+            <div className="absolute inset-0 flex items-center justify-center bg-charcoal">
+              <Camera className="w-12 h-12 text-champagne animate-pulse" />
+            </div>
+          )}
+
+          {!showingPreview && (
+            <div className="absolute top-4 left-4 right-4 space-y-2 z-10">
+              <div className="flex justify-between items-start gap-2">
+                {!isReplaceMode ? (
+                  <UploadIndicator guestName={guestName} quota={uploadCheck.quota} compact />
+                ) : (
+                  <span className="text-xs text-ivory/70 px-3 py-2 rounded-full bg-black/40">
+                    Replace mode
+                  </span>
+                )}
+                <div className="flex gap-2 shrink-0">
+                  <Link
+                    href={`/event/${eventId}/my-uploads`}
+                    className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
+                  >
+                    <FolderOpen className="w-5 h-5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFacingMode((f) => (f === "user" ? "environment" : "user"))
+                    }
+                    className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
+                  >
+                    <FlipHorizontal className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
             </div>
-            <div className="px-3 py-2 bg-black/60 overflow-x-auto">
+          )}
+
+          {showingPreview && photoMgmt && (
+            <div className="absolute inset-0 z-20">
+              <PhotoPreviewScreen
+                guest={guest}
+                imageData={captured!}
+                isVideo={mode === "video"}
+                filter={filter}
+                caption={caption}
+                markAsExtra={uploadCheck.markAsExtra}
+                replaceMode={isReplaceMode}
+                settings={photoMgmt}
+                uploading={uploading}
+                onFilterChange={setFilter}
+                onCaptionChange={setCaption}
+                onImageChange={setCaptured}
+                onRetake={retake}
+                onDelete={discardPreview}
+                onUpload={upload}
+              />
+            </div>
+          )}
+        </div>
+
+        {!showingPreview && (
+          <>
+            <div className="px-3 py-2 bg-black/60 overflow-x-auto shrink-0">
               <div className="flex gap-2">
                 {FILTERS.map((f) => (
                   <button
@@ -393,7 +443,7 @@ export function WeddingCamera({
                 ))}
               </div>
             </div>
-            <div className="px-4 py-4 bg-charcoal safe-bottom space-y-3">
+            <div className="px-4 py-4 bg-charcoal safe-bottom space-y-3 shrink-0">
               <Select
                 options={SEGMENTS.map((s) => ({ value: s.value, label: s.label }))}
                 value={segment}
@@ -408,11 +458,10 @@ export function WeddingCamera({
                 >
                   <ImageIcon className="w-6 h-6" />
                 </button>
-                <motion.button
+                <button
                   type="button"
-                  whileTap={{ scale: 0.9 }}
                   onClick={handleCapture}
-                  className={`rounded-full border-4 flex items-center justify-center ${
+                  className={`rounded-full border-4 flex items-center justify-center active:scale-95 transition-transform ${
                     recording ? "border-red-500 bg-red-500/20" : "border-ivory bg-white/10"
                   }`}
                   style={{ width: 72, height: 72 }}
@@ -426,7 +475,7 @@ export function WeddingCamera({
                           : "w-14 h-14 bg-ivory"
                     }`}
                   />
-                </motion.button>
+                </button>
                 <button
                   type="button"
                   onClick={() => setMode("video")}
@@ -436,9 +485,9 @@ export function WeddingCamera({
                 </button>
               </div>
             </div>
-          </motion.div>
+          </>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
