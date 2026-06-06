@@ -29,17 +29,48 @@ function runTransaction<T>(
       new Promise<T>((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, mode);
         const request = run(tx.objectStore(STORE_NAME));
-        request.onerror = () => reject(request.error ?? new Error("Media store request failed"));
-        tx.oncomplete = () => resolve(request.result);
-        tx.onerror = () => reject(tx.error ?? new Error("Media store transaction failed"));
-        tx.onabort = () => reject(tx.error ?? new Error("Media store transaction aborted"));
+
+        request.onerror = () => {
+          db.close();
+          reject(request.error ?? new Error("Media store request failed"));
+        };
+
+        tx.oncomplete = () => {
+          db.close();
+          resolve(request.result as T);
+        };
+
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error ?? new Error("Media store transaction failed"));
+        };
+
+        tx.onabort = () => {
+          db.close();
+          reject(tx.error ?? new Error("Media store transaction aborted"));
+        };
       })
   );
 }
 
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const response = await fetch(dataUrl);
+  return response.blob();
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read blob"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function saveUploadMedia(id: string, imageData: string): Promise<boolean> {
   try {
-    await runTransaction("readwrite", (store) => store.put(imageData, id));
+    const blob = await dataUrlToBlob(imageData);
+    await runTransaction("readwrite", (store) => store.put(blob, id));
     return true;
   } catch (err) {
     console.error("[WeddingPOV] saveUploadMedia failed:", err);
@@ -49,8 +80,10 @@ export async function saveUploadMedia(id: string, imageData: string): Promise<bo
 
 export async function getUploadMedia(id: string): Promise<string | null> {
   try {
-    const value = await runTransaction<string | undefined>("readonly", (store) => store.get(id));
-    return typeof value === "string" ? value : null;
+    const value = await runTransaction<Blob | string | undefined>("readonly", (store) => store.get(id));
+    if (typeof value === "string") return value;
+    if (value instanceof Blob) return blobToDataUrl(value);
+    return null;
   } catch (err) {
     console.error("[WeddingPOV] getUploadMedia failed:", err);
     return null;
@@ -73,8 +106,14 @@ export async function deleteUploadMediaBatch(ids: string[]): Promise<void> {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
       ids.forEach((id) => store.delete(id));
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error ?? new Error("Media batch delete failed"));
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error ?? new Error("Media batch delete failed"));
+      };
     });
   } catch (err) {
     console.error("[WeddingPOV] deleteUploadMediaBatch failed:", err);

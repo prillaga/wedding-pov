@@ -85,32 +85,26 @@ function readPersistedUploads(): PersistedUpload[] {
 }
 
 function writePersistedUploads(records: PersistedUpload[]): boolean {
-  return write(UPLOADS_KEY, records);
+  return write(UPLOADS_KEY, records.map(stripImageData));
 }
 
-async function migrateLegacyUploadMedia(records: PersistedUpload[]): Promise<PersistedUpload[]> {
-  let changed = false;
+/** Move legacy inline photos to IndexedDB and strip them from localStorage metadata. */
+async function compactPersistedUploads(records: PersistedUpload[]): Promise<PersistedUpload[]> {
   const next: PersistedUpload[] = [];
 
   for (const record of records) {
     if (record.imageData && record.imageData.length > 32) {
       const ok = await saveUploadMedia(record.id, record.imageData);
-      if (ok) {
-        uploadMediaCache.set(record.id, record.imageData);
-        const { imageData: _removed, ...meta } = record;
-        next.push(meta);
-        changed = true;
-        continue;
+      uploadMediaCache.set(record.id, record.imageData);
+      if (!ok) {
+        console.warn("[WeddingPOV] Could not move legacy upload to IndexedDB:", record.id);
       }
     }
-    next.push(record);
+    next.push(stripImageData(record));
   }
 
-  if (changed) {
-    writePersistedUploads(next);
-  }
-
-  return changed ? next : records;
+  writePersistedUploads(next);
+  return next;
 }
 
 /** Load photo blobs from IndexedDB (and migrate legacy localStorage blobs). */
@@ -120,16 +114,11 @@ export async function ensureUploadsHydrated(): Promise<void> {
   if (uploadsHydratePromise) return uploadsHydratePromise;
 
   uploadsHydratePromise = (async () => {
-    let records = readPersistedUploads();
-    records = await migrateLegacyUploadMedia(records);
+    let records = await compactPersistedUploads(readPersistedUploads());
 
     await Promise.all(
       records.map(async (record) => {
         if (uploadMediaCache.has(record.id)) return;
-        if (record.imageData) {
-          uploadMediaCache.set(record.id, record.imageData);
-          return;
-        }
         const media = await getUploadMedia(record.id);
         if (media) uploadMediaCache.set(record.id, media);
       })
@@ -590,6 +579,14 @@ export function getApprovedUploads(eventId: string): Upload[] {
   );
 }
 
+/** One-tap repair when uploads fail — frees localStorage by moving photos to IndexedDB. */
+export async function repairGuestPhotoStorage(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  await compactPersistedUploads(readPersistedUploads());
+  uploadsHydrated = true;
+  return true;
+}
+
 export async function addUpload(
   data: Omit<Upload, "id" | "createdAt" | "status"> & { isExtra?: boolean }
 ): Promise<Upload | null> {
@@ -597,20 +594,45 @@ export async function addUpload(
   if (event?.moderation.uploadsDisabled) return null;
 
   const id = uuidv4();
-  const savedMedia = await saveUploadMedia(id, data.imageData);
+  let imageData = data.imageData;
+
+  let savedMedia = await saveUploadMedia(id, imageData);
+  if (!savedMedia && !data.isVideo) {
+    try {
+      const { compressImageForUpload } = await import("./image-utils");
+      imageData = await compressImageForUpload(imageData, 960, 0.72);
+      savedMedia = await saveUploadMedia(id, imageData);
+    } catch {
+      // keep original
+    }
+  }
+
   if (!savedMedia) return null;
 
-  uploadMediaCache.set(id, data.imageData);
+  uploadMediaCache.set(id, imageData);
 
   const upload: Upload = {
     ...data,
+    imageData,
     id,
     status: data.isExtra ? "extra" : event?.moderation.autoApprove ? "approved" : "pending",
     createdAt: new Date().toISOString(),
   };
 
-  const records = readPersistedUploads();
-  const saved = writePersistedUploads([stripImageData(upload), ...records]);
+  let records = await compactPersistedUploads(readPersistedUploads());
+  records = records.filter((record) => record.id !== id);
+
+  let saved = writePersistedUploads([stripImageData(upload), ...records]);
+  if (!saved) {
+    records = records.filter((record) => record.status !== "removed");
+    saved = writePersistedUploads([stripImageData(upload), ...records]);
+  }
+  if (!saved) {
+    records = await compactPersistedUploads(readPersistedUploads());
+    records = records.filter((record) => record.id !== id);
+    saved = writePersistedUploads([stripImageData(upload), ...records]);
+  }
+
   if (!saved) {
     uploadMediaCache.delete(id);
     await deleteUploadMedia(id);
@@ -665,13 +687,24 @@ export async function replaceUpload(
   const upload = records.find((u) => u.id === uploadId && u.guestId === guestId);
   if (!upload || upload.status === "removed") return false;
 
-  const savedMedia = await saveUploadMedia(uploadId, data.imageData);
+  let imageData = data.imageData;
+  let savedMedia = await saveUploadMedia(uploadId, imageData);
+  if (!savedMedia && !data.isVideo) {
+    try {
+      const { compressImageForUpload } = await import("./image-utils");
+      imageData = await compressImageForUpload(imageData, 960, 0.72);
+      savedMedia = await saveUploadMedia(uploadId, imageData);
+    } catch {
+      // keep original
+    }
+  }
   if (!savedMedia) return false;
 
-  uploadMediaCache.set(uploadId, data.imageData);
+  uploadMediaCache.set(uploadId, imageData);
 
+  const compacted = await compactPersistedUploads(records);
   return writePersistedUploads(
-    records.map((u) =>
+    compacted.map((u) =>
       u.id === uploadId
         ? {
             ...u,

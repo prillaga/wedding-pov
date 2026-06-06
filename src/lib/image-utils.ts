@@ -2,8 +2,8 @@ import { FILTERS } from "@/lib/constants";
 import type { CameraFilter } from "@/types";
 
 /** Max long edge for stored guest photos — keeps saves fast and within device quotas. */
-export const UPLOAD_MAX_EDGE = 1280;
-export const UPLOAD_JPEG_QUALITY = 0.78;
+export const UPLOAD_MAX_EDGE = 1024;
+export const UPLOAD_JPEG_QUALITY = 0.72;
 
 export function getFilterCss(filter: CameraFilter): string {
   return FILTERS.find((f) => f.value === filter)?.css ?? "none";

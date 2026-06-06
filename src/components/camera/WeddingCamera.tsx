@@ -347,11 +347,12 @@ export function WeddingCamera({
           isVideo: mode === "video",
           isExtra: uploadCheck.markAsExtra,
         });
+
         if (!saved) {
           showSuccess(
             event?.moderation.uploadsDisabled
               ? "Uploads are paused for this event."
-              : "Could not save photo. Try deleting old photos in My Uploads, then try again."
+              : "Could not save photo. Delete a few old photos in My Uploads, then try again. Avoid private browsing mode."
           );
           return;
         }
