@@ -1,6 +1,8 @@
 import type {
   CameraFilter,
   EventSegment,
+  HeroInvitationStyle,
+  HeroLayout,
   HeroSettings,
   PhotoLimitValue,
   PhotoManagementSettings,
@@ -13,6 +15,10 @@ import type {
 
 export const APP_NAME = "Wedding POV";
 export const TAGLINE = "See the Wedding Through Every Guest's Eyes.";
+
+/** Client-side admin gate (deterrent for guest-facing demo; not server auth). */
+export const ADMIN_PASSWORD = "prillaga321";
+export const ADMIN_AUTH_KEY = "wedding-pov-admin-auth";
 
 export const STORAGE_PLAN_GB = 50;
 
@@ -208,17 +214,51 @@ export const DEFAULT_SCREEN_BACKGROUNDS: ScreenBackgrounds = {
   display: "#0A0A0A",
 };
 
+export const DEFAULT_HERO_TEXT_COLORS = {
+  hashtag: "#C9A962",
+  title: "#FFFFFF",
+  date: "#FFFFFF",
+  tagline: "#FFFFFF",
+  button: "#C9A962",
+  buttonText: "#FFFFFF",
+};
+
+export const HERO_LAYOUT_OPTIONS: { value: HeroLayout; label: string }[] = [
+  { value: "full-screen", label: "Couple Photo Full Screen" },
+  { value: "split-left", label: "Photo Left, Details Right" },
+  { value: "invitation-center", label: "Centered Invitation Style" },
+  { value: "video-background", label: "Video Background" },
+  { value: "slideshow", label: "Animated Slideshow" },
+];
+
+export const HERO_INVITATION_STYLES: { value: HeroInvitationStyle; label: string }[] = [
+  { value: "none", label: "Standard" },
+  { value: "floral-border", label: "Floral Border" },
+  { value: "gold-accents", label: "Gold Accents" },
+  { value: "glass-card", label: "Glassmorphism Card" },
+  { value: "luxury", label: "Luxury Wedding" },
+  { value: "minimal", label: "Minimal Modern" },
+];
+
 export const DEFAULT_HERO: HeroSettings = {
   backgroundImages: [],
   backgroundSlideshow: false,
   slideshowInterval: 6000,
   imagePosition: { x: 50, y: 50 },
   imageZoom: 100,
+  imageRotation: 0,
+  brightness: 100,
   blurAmount: 0,
   overlayColor: "#000000",
   overlayGradient: { from: "#000000", to: "#000000", angle: 180 },
   overlayOpacity: 0.45,
   useGradientOverlay: true,
+  lightOverlay: false,
+  layout: "full-screen",
+  invitationStyle: "luxury",
+  textColors: { ...DEFAULT_HERO_TEXT_COLORS },
+  textShadow: true,
+  textBackdropBlur: 0,
 };
 
 export const DEFAULT_THEME = {

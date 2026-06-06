@@ -176,18 +176,49 @@ export function EventArchiveManager({
 
       {/* Event status */}
       {isArchived && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-          <Archive className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-amber-900">Archived Event</p>
-            <p className="text-sm text-amber-800 mt-1">
-              {event.coupleName} · {formatDate(event.weddingDate)}
-              {event.archivedAt && (
-                <> · Archived {new Date(event.archivedAt).toLocaleDateString()}</>
-              )}
-            </p>
-            <Button variant="secondary" size="sm" className="mt-3" onClick={handleRestore}>
-              <RotateCcw className="w-4 h-4" /> Restore Event
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+          <div className="flex items-start gap-3">
+            <Archive className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-900">Archived Event</p>
+              <p className="text-sm text-amber-800 mt-1">
+                {event.coupleName} · {formatDate(event.weddingDate)}
+                {event.archivedAt && (
+                  <> · Archived {new Date(event.archivedAt).toLocaleDateString()}</>
+                )}
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Hidden from active dashboard · Still downloadable · Restorable anytime
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={handleRestore}>
+              <RotateCcw className="w-4 h-4" /> Restore
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={downloading === "all"}
+              disabled={photos.length === 0}
+              onClick={() =>
+                runDownload("all", () =>
+                  downloadPhotosZip(photos, `${eventLabel}-all-photos.zip`, "All wedding photos")
+                )
+              }
+            >
+              <Download className="w-4 h-4" /> Download Photos
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={downloading === "backup"}
+              onClick={() => runDownload("backup", () => downloadFullEventBackup(event, guests, photos))}
+            >
+              <FolderArchive className="w-4 h-4" /> Download Backup
+            </Button>
+            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setShowDeleteModal(true)}>
+              <Trash2 className="w-4 h-4" /> Permanently Delete
             </Button>
           </div>
         </div>
@@ -251,7 +282,7 @@ export function EventArchiveManager({
           </>
         )}
 
-        <p className="text-xs font-medium text-warm-gray pt-2">Download by Event Section</p>
+        <p className="text-xs font-medium text-warm-gray pt-2">Photos by Album (Event Sections)</p>
         <div className="flex flex-wrap gap-2">
           {SEGMENT_DOWNLOAD_OPTIONS.map(({ segment, label }) => (
             <button
@@ -335,38 +366,82 @@ export function EventArchiveManager({
       {archivedEvents.length > 0 && (
         <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3">
           <h3 className="font-medium">Archived Weddings</h3>
-          {archivedEvents.map((archived) => (
-            <div
-              key={archived.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-blush/20 border border-champagne/10"
-            >
-              <div>
-                <p className="font-medium">{archived.coupleName}</p>
-                <p className="text-xs text-warm-gray">
-                  {formatDate(archived.weddingDate)} · Status: Archived
-                </p>
+          {archivedEvents.map((archived) => {
+            const archivedPhotos = getUploads(archived.id).filter((u) => u.status !== "removed");
+            const archivedGuests = getGuests(archived.id);
+            const archivedLabel = sanitize(archived.coupleName);
+            return (
+              <div
+                key={archived.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-blush/20 border border-champagne/10"
+              >
+                <div>
+                  <p className="font-medium">{archived.coupleName}</p>
+                  <p className="text-xs text-warm-gray">
+                    {formatDate(archived.weddingDate)} · Status: Archived · {archivedPhotos.length}{" "}
+                    photos
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      restoreEvent(archived.id);
+                      onRefresh();
+                    }}
+                  >
+                    Restore
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={archivedPhotos.length === 0 || downloading !== null}
+                    onClick={() =>
+                      runDownload(`archived-${archived.id}`, () =>
+                        downloadPhotosZip(
+                          archivedPhotos,
+                          `${archivedLabel}-all-photos.zip`,
+                          `${archived.coupleName} — all photos`
+                        )
+                      )
+                    }
+                  >
+                    Download Photos
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={downloading !== null}
+                    onClick={() =>
+                      runDownload(`archived-backup-${archived.id}`, () =>
+                        downloadFullEventBackup(archived, archivedGuests, archivedPhotos)
+                      )
+                    }
+                  >
+                    Download Backup
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Permanently delete ${archived.coupleName}? This cannot be undone.`
+                        )
+                      ) {
+                        deleteEventPermanently(archived.id);
+                        onRefresh();
+                      }
+                    }}
+                  >
+                    Permanently Delete
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    restoreEvent(archived.id);
-                    onRefresh();
-                  }}
-                >
-                  Restore
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push(`/dashboard/${archived.id}`)}
-                >
-                  Open
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
       )}
 

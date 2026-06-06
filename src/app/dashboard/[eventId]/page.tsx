@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
@@ -12,19 +12,32 @@ import { ArrowLeft } from "lucide-react";
 export default function DashboardPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const [event, setEvent] = useState<WeddingEvent | null>(null);
-  const [ready, setReady] = useState(false);
+  const [seeded, setSeeded] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     seedDemoEvent();
-    setEvent(getEvent(eventId) ?? null);
-    setReady(true);
-  }, [eventId]);
+    setSeeded(true);
+  }, []);
 
-  if (!ready) {
+  const event = useMemo(() => (seeded ? getEvent(eventId) ?? null : null), [seeded, eventId]);
+
+  if (!seeded) {
     return (
       <main className="min-h-dvh flex items-center justify-center">
-        <p className="text-warm-gray">Loading...</p>
+        <p className="text-warm-gray">Loading event...</p>
+      </main>
+    );
+  }
+
+  if (!event) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center px-6 text-center">
+        <div>
+          <p className="font-serif text-xl mb-2">Event not found</p>
+          <Link href="/dashboard" className="text-champagne underline">
+            Back to My Events
+          </Link>
+        </div>
       </main>
     );
   }
@@ -32,10 +45,10 @@ export default function DashboardPage() {
   return (
     <main className="min-h-dvh pb-8">
       <PageHeader
-        title="Couple Dashboard"
-        subtitle={event ? `${event.coupleName} — Manage your wedding memories` : "Event management"}
+        title="Event Dashboard"
+        subtitle={`${event.coupleName} — Manage your wedding`}
       >
-        <Link href="/" className="p-2 rounded-full hover:bg-blush transition-colors">
+        <Link href="/dashboard" className="p-2 rounded-full hover:bg-blush transition-colors">
           <ArrowLeft className="w-5 h-5 text-warm-gray" />
         </Link>
       </PageHeader>

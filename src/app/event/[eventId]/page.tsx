@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -28,23 +28,29 @@ export default function EventHomePage() {
   const { photos: slideshowPhotos, loading: slideshowLoading } = useEventPhotos(eventId, {
     pollIntervalMs: 3000,
   });
-  const [event, setEvent] = useState<WeddingEvent | null>(null);
+  const [event, setEvent] = useState<WeddingEvent | null | undefined>(undefined);
   const [guest, setGuest] = useState<(Guest & { eventId?: string }) | null>(null);
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     seedDemoEvent();
     seedSampleUploads(eventId);
     setEvent(getEvent(eventId) ?? null);
     const session = getSession();
     setGuest(session ? getGuest(session.guestId) ?? null : null);
-    setReady(true);
   }, [eventId]);
 
-  if (!ready || !event) {
+  if (event === undefined) {
     return (
       <main className="min-h-dvh flex items-center justify-center luxury-page-bg">
         <p className="font-serif text-warm-gray animate-pulse">Opening your invitation…</p>
+      </main>
+    );
+  }
+
+  if (!event) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center luxury-page-bg px-6 text-center">
+        <p className="font-serif text-warm-gray">Event not found</p>
       </main>
     );
   }

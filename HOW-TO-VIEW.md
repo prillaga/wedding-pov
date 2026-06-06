@@ -1,22 +1,47 @@
 # How to View Wedding POV
 
-## Marshmallow is NOT Wedding POV
+## If you see "Marshmallow" or a blank page
 
-**"Marshmallow is offline"** = Cursor cloud sync. Not our app. Ignore it.
+**Marshmallow = Cursor's preview.** It is NOT Wedding POV.
 
-Do NOT use Cursor's built-in browser. Use Safari or Chrome.
+Do **not** use Cursor's built-in browser. Use **Safari** or **Chrome**.
 
-## Easiest way (no npm)
+---
 
-1. Open Finder
-2. Go to `wedding-pov` folder
-3. Double-click **WeddingPOV.html**
-4. Opens in Safari/Chrome with working Join Event flow
+## Easiest way to run the full app (Mac)
 
-## Full app (requires Node.js)
+1. Open Finder → `wedding-pov` folder  
+2. **Double-click `Start Wedding POV.command`**  
+3. Safari opens automatically at the guest page and admin dashboard  
+
+> **Note:** Port 3000 may be used by another app on your Mac. The launcher picks **3001** (or next free port).
+
+---
+
+## Offline demo (no Node.js)
+
+1. Double-click **`WeddingPOV.html`** in Finder  
+2. Opens in Safari — John & Jane hero + Join Event  
+
+---
+
+## Manual start (Terminal)
 
 ```bash
-npm install && npm run dev
+cd wedding-pov
+npm install
+npm run dev -- --port 3001
 ```
 
-Open **Chrome or Safari** → http://localhost:3000/wedding/prillaga-wedding-2026
+Open in **Safari** (not Cursor):
+
+- Guest: http://localhost:3001/wedding/prillaga-wedding-2026  
+- Admin: http://localhost:3001/dashboard  
+
+---
+
+## Live site (Vercel)
+
+https://wedding-pov-two.vercel.app/wedding/prillaga-wedding-2026
+
+*(May be behind local changes until latest code is pushed to GitHub.)*

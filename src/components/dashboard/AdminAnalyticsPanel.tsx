@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { EventQRCode } from "@/components/qr/EventQRCode";
 import { getApprovedUploads } from "@/lib/store";
 import { formatGuestNamePOV } from "@/lib/utils";
 import type { EventStats, WeddingEvent } from "@/types";
@@ -110,8 +110,14 @@ export function AdminAnalyticsPanel({ eventId, event, stats }: AdminAnalyticsPan
         </div>
       </div>
 
-      <div className="p-6 rounded-2xl bg-white wedding-shadow text-center">
-        <EventQRCode eventId={eventId} coupleName={event.coupleName} />
+      <div className="p-4 rounded-2xl bg-white wedding-shadow text-center">
+        <p className="text-sm text-warm-gray mb-3">
+          Full QR management is in the <strong>QR Code</strong> tab — download, print, share, and copy
+          your guest link.
+        </p>
+        <Link href={`/wedding/${eventId}`} className="text-sm text-champagne hover:underline">
+          Preview guest page →
+        </Link>
       </div>
 
       <Button

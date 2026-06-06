@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { HighlightsReel } from "@/components/highlights/HighlightsReel";
@@ -16,6 +17,7 @@ import {
   updateUploadStatus,
 } from "@/lib/store";
 import { formatGuestNamePOV } from "@/lib/utils";
+import { getEventStatusLabel } from "@/lib/event-utils";
 import type { Upload } from "@/types";
 import {
   BarChart3,
@@ -23,7 +25,9 @@ import {
   Check,
   Film,
   FolderArchive,
+  ImageIcon,
   Palette,
+  QrCode,
   Settings,
   Shield,
   Sliders,
@@ -31,15 +35,19 @@ import {
 } from "lucide-react";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
 import { EventArchiveManager } from "./EventArchiveManager";
+import { EventStatusPanel } from "./EventStatusPanel";
+import { HeroBannerEditor } from "./HeroBannerEditor";
 import { PhotoLimitManager } from "./PhotoLimitManager";
 import { SlideshowSettingsPanel } from "./SlideshowSettingsPanel";
 import { TemplateManager } from "./TemplateManager";
 import { ThemeManager } from "./ThemeManager";
 
 type AdminTab =
+  | "qr"
   | "analytics"
   | "settings"
   | "limits"
+  | "hero"
   | "theme"
   | "slideshow"
   | "templates"
@@ -52,7 +60,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ eventId }: AdminDashboardProps) {
-  const [tab, setTab] = useState<AdminTab>("analytics");
+  const [tab, setTab] = useState<AdminTab>("qr");
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [stats, setStats] = useState(getEventStats(eventId));
   const [event, setEvent] = useState(getEvent(eventId));
@@ -70,9 +78,11 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
   if (!event) return null;
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    { id: "qr", label: "QR Code", icon: <QrCode className="w-4 h-4" /> },
     { id: "analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
     { id: "settings", label: "Event", icon: <Settings className="w-4 h-4" /> },
     { id: "limits", label: "Photo Limits", icon: <Sliders className="w-4 h-4" /> },
+    { id: "hero", label: "Hero Banner", icon: <ImageIcon className="w-4 h-4" /> },
     { id: "theme", label: "Theme", icon: <Palette className="w-4 h-4" /> },
     { id: "slideshow", label: "Slideshow", icon: <Film className="w-4 h-4" /> },
     { id: "templates", label: "Templates", icon: <Bookmark className="w-4 h-4" /> },
@@ -86,10 +96,20 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
   return (
     <div className="space-y-6">
       <div className="p-4 rounded-2xl bg-gradient-to-r from-blush to-white border border-champagne/15">
-        <h2 className="font-serif text-xl font-semibold">Admin Dashboard</h2>
-        <p className="text-sm text-warm-gray mt-1">
-          Customize themes, photo limits, slideshow, and branding — no coding required.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-xl font-semibold">{event.coupleName}</h2>
+            <p className="text-sm text-warm-gray mt-1">
+              Status: {getEventStatusLabel(event.status)} · Manage QR, theme, and guest experience
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="text-xs text-champagne hover:underline shrink-0"
+          >
+            ← All Events
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -106,6 +126,8 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
           </button>
         ))}
       </div>
+
+      {tab === "qr" && <EventStatusPanel event={event} onRefresh={refresh} />}
 
       {tab === "analytics" && (
         <AdminAnalyticsPanel eventId={eventId} event={event} stats={stats} />
@@ -147,6 +169,8 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
       {tab === "limits" && (
         <PhotoLimitManager event={event} stats={stats} onRefresh={refresh} />
       )}
+
+      {tab === "hero" && <HeroBannerEditor event={event} onRefresh={refresh} />}
 
       {tab === "theme" && <ThemeManager event={event} onRefresh={refresh} />}
 

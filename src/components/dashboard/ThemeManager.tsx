@@ -11,7 +11,7 @@ import {
 } from "@/lib/constants";
 import { updateTheme } from "@/lib/store";
 import type { BackgroundMode, ThemePreset, ThemeSettings, ThemeSettingsPatch, WeddingEvent } from "@/types";
-import { ImagePlus, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { LiveThemePreview } from "./LiveThemePreview";
 
 interface ThemeManagerProps {
@@ -122,75 +122,19 @@ export function ThemeManager({ event, onRefresh }: ThemeManagerProps) {
           ))}
         </section>
 
-        <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-4">
-          <h3 className="font-medium">Couple Hero Section</h3>
-
-          <div>
-            <label className="block text-sm text-warm-gray mb-1.5">Couple Photo</label>
-            <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-champagne/30 cursor-pointer text-sm text-warm-gray hover:bg-blush/30">
-              <ImagePlus className="w-4 h-4" />
-              Upload couple photo
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  readFile(file, (dataUrl) => {
-                    persist({
-                      backgroundImage: dataUrl,
-                      hero: { couplePhoto: dataUrl },
-                    });
-                  });
-                }}
-              />
-            </label>
-          </div>
-
-          <div>
-            <label className="block text-sm text-warm-gray mb-1.5">Background Images (slideshow)</label>
-            <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-champagne/30 cursor-pointer text-sm text-warm-gray hover:bg-blush/30">
-              <ImagePlus className="w-4 h-4" />
-              Add background images
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  if (!files.length) return;
-                  Promise.all(
-                    files.map(
-                      (file) =>
-                        new Promise<string>((resolve) => readFile(file, resolve))
-                    )
-                  ).then((images) => {
-                    persist({
-                      hero: {
-                        backgroundImages: [...draft.hero.backgroundImages, ...images],
-                        backgroundSlideshow: true,
-                      },
-                      backgroundMode: "slideshow",
-                    });
-                  });
-                }}
-              />
-            </label>
-            {draft.hero.backgroundImages.length > 0 && (
-              <p className="text-xs text-warm-gray mt-1">
-                {draft.hero.backgroundImages.length} background image(s)
-              </p>
-            )}
-          </div>
-
+        <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3">
+          <h3 className="font-medium">Welcome Screen Hero</h3>
+          <p className="text-sm text-warm-gray">
+            Couple photos, layouts, invitation styles, text colors, and overlays are managed in the{" "}
+            <strong>Hero Banner</strong> admin tab for a full live preview.
+          </p>
           <Select
-            label="Background Mode"
+            label="Background Mode (app-wide fallback)"
             options={[
               { value: "photo", label: "Couple Photo" },
               { value: "blur", label: "Blur Background" },
               { value: "dark-overlay", label: "Color Overlay" },
+              { value: "light-overlay", label: "Light Overlay" },
               { value: "slideshow", label: "Background Slideshow" },
             ]}
             value={draft.backgroundMode}
@@ -198,138 +142,9 @@ export function ThemeManager({ event, onRefresh }: ThemeManagerProps) {
               persist({ backgroundMode: e.target.value as BackgroundMode })
             }
           />
+        </section>
 
-          <div>
-            <label className="text-sm text-warm-gray">
-              Reposition — X: {draft.hero.imagePosition.x}%
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={draft.hero.imagePosition.x}
-              onChange={(e) =>
-                persist({
-                  hero: {
-                    imagePosition: { ...draft.hero.imagePosition, x: Number(e.target.value) },
-                  },
-                })
-              }
-              className="w-full accent-champagne"
-            />
-            <label className="text-sm text-warm-gray">
-              Reposition — Y: {draft.hero.imagePosition.y}%
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={draft.hero.imagePosition.y}
-              onChange={(e) =>
-                persist({
-                  hero: {
-                    imagePosition: { ...draft.hero.imagePosition, y: Number(e.target.value) },
-                  },
-                })
-              }
-              className="w-full accent-champagne"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-warm-gray">Zoom: {draft.hero.imageZoom}%</label>
-            <input
-              type="range"
-              min={80}
-              max={200}
-              value={draft.hero.imageZoom}
-              onChange={(e) => persist({ hero: { imageZoom: Number(e.target.value) } })}
-              className="w-full accent-champagne"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-warm-gray">Blur: {draft.hero.blurAmount}px</label>
-            <input
-              type="range"
-              min={0}
-              max={20}
-              value={draft.hero.blurAmount}
-              onChange={(e) => persist({ hero: { blurAmount: Number(e.target.value) } })}
-              className="w-full accent-champagne"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-warm-gray">
-              Overlay Opacity: {Math.round(draft.hero.overlayOpacity * 100)}%
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(draft.hero.overlayOpacity * 100)}
-              onChange={(e) =>
-                persist({ hero: { overlayOpacity: Number(e.target.value) / 100 } })
-              }
-              className="w-full accent-champagne"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={draft.hero.useGradientOverlay}
-              onChange={(e) => persist({ hero: { useGradientOverlay: e.target.checked } })}
-            />
-            Gradient overlay
-          </label>
-
-          {draft.hero.useGradientOverlay ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-warm-gray">Gradient From</label>
-                <input
-                  type="color"
-                  value={draft.hero.overlayGradient.from}
-                  onChange={(e) =>
-                    persist({
-                      hero: {
-                        overlayGradient: { ...draft.hero.overlayGradient, from: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full h-10 rounded-lg cursor-pointer mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-warm-gray">Gradient To</label>
-                <input
-                  type="color"
-                  value={draft.hero.overlayGradient.to}
-                  onChange={(e) =>
-                    persist({
-                      hero: {
-                        overlayGradient: { ...draft.hero.overlayGradient, to: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full h-10 rounded-lg cursor-pointer mt-1"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-warm-gray">Overlay Color</label>
-              <input
-                type="color"
-                value={draft.hero.overlayColor}
-                onChange={(e) => persist({ hero: { overlayColor: e.target.value } })}
-                className="w-10 h-10 rounded-lg cursor-pointer"
-              />
-            </div>
-          )}
-
+        <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3">
           <Select
             label="Typography"
             options={TYPOGRAPHY_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}

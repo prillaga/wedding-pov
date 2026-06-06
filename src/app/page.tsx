@@ -1,48 +1,37 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
-import { seedDemoEvent } from "@/lib/store";
-import { Camera, Heart, QrCode, Sparkles } from "lucide-react";
+import { parseEventCodeInput } from "@/lib/event-utils";
+import { Camera, Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-const QRScanner = dynamic(
-  () => import("@/components/qr/QRScanner").then((m) => m.QRScanner),
-  { ssr: false }
-);
+const QRScanner = dynamic(() => import("@/components/qr/QRScanner"), { ssr: false });
 
 export default function HomePage() {
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
   const [eventCode, setEventCode] = useState("");
-  const [mounted, setMounted] = useState(false);
+  const [manualError, setManualError] = useState("");
 
-  useEffect(() => {
-    seedDemoEvent();
-    setMounted(true);
-  }, []);
+  const goToEvent = (raw: string) => {
+    const eventId = parseEventCodeInput(raw);
+    if (!eventId) {
+      setManualError("Enter an event code or paste your invitation link.");
+      return;
+    }
+    setManualError("");
+    setShowScanner(false);
+    router.push(`/wedding/${encodeURIComponent(eventId)}`);
+  };
 
   const handleScan = (eventId: string) => {
-    setShowScanner(false);
-    router.push(`/wedding/${eventId}`);
+    goToEvent(eventId);
   };
-
-  const handleManualJoin = () => {
-    const code = eventCode.trim() || DEMO_EVENT_ID;
-    router.push(`/wedding/${code}`);
-  };
-
-  if (!mounted) {
-    return (
-      <main className="min-h-dvh flex items-center justify-center">
-        <p className="text-warm-gray">Loading...</p>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-dvh flex flex-col">
@@ -65,19 +54,17 @@ export default function HomePage() {
             {APP_NAME}
           </h1>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
-          <p className="text-champagne text-sm mt-1">👰🤵📸✨</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="relative z-10 grid grid-cols-3 gap-4 mt-10 max-w-sm w-full"
+          className="relative z-10 grid grid-cols-2 gap-4 mt-10 max-w-xs w-full"
         >
           {[
             { icon: <QrCode className="w-5 h-5" />, label: "Scan QR" },
-            { icon: <Camera className="w-5 h-5" />, label: "Capture POV" },
-            { icon: <Sparkles className="w-5 h-5" />, label: "Live Story" },
+            { icon: <Camera className="w-5 h-5" />, label: "Take Photos" },
           ].map((item) => (
             <div
               key={item.label}
@@ -108,22 +95,28 @@ export default function HomePage() {
             <div className="flex-1 h-px bg-champagne/20" />
           </div>
 
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <input
               value={eventCode}
-              onChange={(e) => setEventCode(e.target.value)}
-              placeholder="Enter event code"
-              className="flex-1 px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
+              onChange={(e) => {
+                setEventCode(e.target.value);
+                setManualError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && goToEvent(eventCode)}
+              placeholder="Event code or invitation link"
+              className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
             />
-            <Button variant="secondary" onClick={handleManualJoin}>
-              Join
+            {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
+            <Button variant="secondary" className="w-full" onClick={() => goToEvent(eventCode)}>
+              Join with Code
             </Button>
           </div>
 
           <p className="text-center text-xs text-warm-gray">
-            Demo:{" "}
+            Demo code:{" "}
             <button
-              onClick={() => router.push(`/wedding/${DEMO_EVENT_ID}`)}
+              type="button"
+              onClick={() => goToEvent(DEMO_EVENT_ID)}
               className="text-champagne hover:underline"
             >
               {DEMO_EVENT_ID}
@@ -131,15 +124,25 @@ export default function HomePage() {
           </p>
 
           <Link
-            href={`/dashboard/${DEMO_EVENT_ID}`}
-            className="block text-center text-xs text-warm-gray hover:text-champagne transition-colors"
+            href="/dashboard"
+            className="flex items-center justify-center gap-2 text-xs text-warm-gray hover:text-champagne transition-colors pt-2"
           >
-            Couple Dashboard →
+            <Settings className="w-3.5 h-3.5" />
+            Admin Dashboard
           </Link>
         </motion.div>
       </section>
 
-      {showScanner && <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
+      {showScanner && (
+        <QRScanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+          onManualEntry={(code) => {
+            setEventCode(code);
+            goToEvent(code);
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -52,7 +52,31 @@ export type ThemePreset =
 
 export type TypographyStyle = "elegant-script" | "luxury-serif" | "modern-sans" | "minimalist";
 
-export type BackgroundMode = "photo" | "blur" | "dark-overlay" | "slideshow";
+export type BackgroundMode = "photo" | "blur" | "dark-overlay" | "slideshow" | "light-overlay";
+
+export type HeroLayout =
+  | "full-screen"
+  | "split-left"
+  | "invitation-center"
+  | "video-background"
+  | "slideshow";
+
+export type HeroInvitationStyle =
+  | "none"
+  | "floral-border"
+  | "gold-accents"
+  | "glass-card"
+  | "luxury"
+  | "minimal";
+
+export interface HeroTextColors {
+  hashtag: string;
+  title: string;
+  date: string;
+  tagline: string;
+  button: string;
+  buttonText: string;
+}
 
 export interface Guest {
   id: string;
@@ -107,11 +131,20 @@ export interface HeroSettings {
   slideshowInterval: number;
   imagePosition: { x: number; y: number };
   imageZoom: number;
+  imageRotation: number;
+  brightness: number;
   blurAmount: number;
   overlayColor: string;
   overlayGradient: { from: string; to: string; angle: number };
   overlayOpacity: number;
   useGradientOverlay: boolean;
+  lightOverlay: boolean;
+  layout: HeroLayout;
+  invitationStyle: HeroInvitationStyle;
+  textColors: HeroTextColors;
+  textShadow: boolean;
+  textBackdropBlur: number;
+  videoBackgroundUrl?: string;
 }
 
 export interface ThemeSettings {
@@ -183,7 +216,7 @@ export interface ModerationSettings {
   uploadsDisabled: boolean;
 }
 
-export type EventStatus = "active" | "archived";
+export type EventStatus = "active" | "paused" | "archived";
 
 export interface StorageDashboardStats {
   totalPhotos: number;

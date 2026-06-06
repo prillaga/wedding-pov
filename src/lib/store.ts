@@ -7,10 +7,13 @@ import type {
   EventSettings,
   EventStats,
   Guest,
+  HeroSettings,
   ModerationSettings,
   PhotoLimitSettings,
+  PhotoLimitValue,
   PhotoManagementSettings,
   SlideshowConfig,
+  ThemePreset,
   ThemeSettings,
   ThemeSettingsPatch,
   StorageDashboardStats,
@@ -20,6 +23,7 @@ import type {
 import {
   DEFAULT_EVENT_SETTINGS,
   DEFAULT_HERO,
+  DEFAULT_HERO_TEXT_COLORS,
   DEFAULT_MODERATION,
   DEFAULT_PHOTO_LIMITS,
   DEFAULT_PHOTO_MANAGEMENT,
@@ -30,7 +34,14 @@ import {
   STORAGE_PLAN_GB,
   THEME_PRESETS,
 } from "./constants";
+import { getHardcodedDemoEvent } from "./demo-event";
 import { getGuestUploadQuota } from "./photo-limits";
+import {
+  generateDefaultHashtag,
+  generateEventSlug,
+  isEventJoinable,
+  isEventUploadsAllowed,
+} from "./event-utils";
 import { formatGuestNamePOV } from "./utils";
 
 const EVENTS_KEY = "wedding-pov-events";
@@ -52,6 +63,18 @@ function read<T>(key: string, fallback: T): T {
 function write<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function mergeHeroSettings(raw?: Partial<HeroSettings>): HeroSettings {
+  const h = raw ?? {};
+  return {
+    ...DEFAULT_HERO,
+    ...h,
+    backgroundImages: Array.isArray(h.backgroundImages) ? h.backgroundImages : DEFAULT_HERO.backgroundImages,
+    imagePosition: { ...DEFAULT_HERO.imagePosition, ...(h.imagePosition ?? {}) },
+    overlayGradient: { ...DEFAULT_HERO.overlayGradient, ...(h.overlayGradient ?? {}) },
+    textColors: { ...DEFAULT_HERO_TEXT_COLORS, ...(h.textColors ?? {}) },
+  };
 }
 
 function migrateEvent(raw: Partial<WeddingEvent> & { id: string }): WeddingEvent {
@@ -84,7 +107,7 @@ function migrateEvent(raw: Partial<WeddingEvent> & { id: string }): WeddingEvent
         ...DEFAULT_SCREEN_BACKGROUNDS,
         ...(raw.theme?.screenBackgrounds ?? {}),
       },
-      hero: { ...DEFAULT_HERO, ...(raw.theme?.hero ?? {}) },
+      hero: mergeHeroSettings(raw.theme?.hero),
     },
     slideshow: {
       ...DEFAULT_SLIDESHOW,
@@ -102,34 +125,7 @@ export function seedDemoEvent(): WeddingEvent {
   const existing = getEvents().find((e) => e.id === DEMO_EVENT_ID);
   if (existing) return existing;
 
-  const event = migrateEvent({
-    id: DEMO_EVENT_ID,
-    coupleName: "John & Jane",
-    weddingDate: "2027-06-20",
-    venue: "The Garden Pavilion",
-    createdAt: new Date().toISOString(),
-    pin: "2027",
-    settings: {
-      ...DEFAULT_EVENT_SETTINGS,
-      brideName: "Jane",
-      groomName: "John",
-    },
-    photoLimits: { ...DEFAULT_PHOTO_LIMITS },
-    theme: { ...DEFAULT_THEME, preset: "champagne", colors: THEME_PRESETS.champagne.colors },
-    slideshow: {
-      ...DEFAULT_SLIDESHOW,
-      intro: {
-        title: "John & Jane",
-        subtitle: "Wedding Memories",
-        line3: "Captured By Family & Friends",
-        date: "June 20, 2027",
-      },
-      outro: { title: "Thank You", subtitle: "For Celebrating With Us", line3: "John & Jane" },
-    },
-    moderation: { ...DEFAULT_MODERATION },
-    photoManagement: { ...DEFAULT_PHOTO_MANAGEMENT },
-  });
-
+  const event = getHardcodedDemoEvent();
   write(EVENTS_KEY, [...getEvents(), event]);
   return event;
 }
@@ -143,6 +139,16 @@ export function getEvents(): WeddingEvent[] {
     write(EVENTS_KEY, []);
     return [];
   }
+}
+
+/** Clear broken saved data — safe recovery for stuck/blank screens. */
+export function resetAppData(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(EVENTS_KEY);
+  localStorage.removeItem(GUESTS_KEY);
+  localStorage.removeItem(UPLOADS_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(TEMPLATES_KEY);
 }
 
 export function getEvent(eventId: string): WeddingEvent | undefined {
@@ -226,6 +232,86 @@ export function createEvent(data: Omit<WeddingEvent, "id" | "createdAt">): Weddi
   return event;
 }
 
+export interface CreateWeddingEventInput {
+  brideName: string;
+  groomName: string;
+  weddingDate: string;
+  venue: string;
+  hashtag?: string;
+  welcomeMessage?: string;
+  maxPhotos?: PhotoLimitValue;
+  themePreset?: ThemePreset;
+  couplePhoto?: string;
+}
+
+export function createWeddingEvent(input: CreateWeddingEventInput): WeddingEvent {
+  const settings: EventSettings = {
+    brideName: input.brideName.trim(),
+    groomName: input.groomName.trim(),
+    weddingDate: input.weddingDate,
+    venue: input.venue.trim(),
+    hashtag: input.hashtag?.trim() || generateDefaultHashtag(input),
+    welcomeMessage: input.welcomeMessage?.trim() ?? "",
+  };
+
+  const preset = input.themePreset ?? "champagne";
+  const id = generateEventSlug(
+    settings,
+    getEvents().map((e) => e.id)
+  );
+
+  const event = migrateEvent({
+    id,
+    coupleName: `${settings.groomName} & ${settings.brideName}`,
+    weddingDate: settings.weddingDate,
+    venue: settings.venue,
+    createdAt: new Date().toISOString(),
+    status: "active",
+    settings,
+    photoLimits: {
+      ...DEFAULT_PHOTO_LIMITS,
+      enabled: true,
+      maxPhotos: input.maxPhotos ?? 25,
+    },
+    theme: {
+      ...DEFAULT_THEME,
+      preset,
+      colors: THEME_PRESETS[preset].colors,
+      backgroundImage: input.couplePhoto,
+      hero: {
+        ...DEFAULT_HERO,
+        couplePhoto: input.couplePhoto,
+        backgroundImages: input.couplePhoto ? [input.couplePhoto] : [],
+      },
+    },
+    slideshow: {
+      ...DEFAULT_SLIDESHOW,
+      intro: {
+        title: `${settings.groomName} & ${settings.brideName}`,
+        subtitle: "Wedding Memories",
+        line3: "Captured By Family & Friends",
+        date: new Date(settings.weddingDate).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }),
+      },
+      outro: {
+        title: "Thank You",
+        subtitle: "For Celebrating With Us",
+        line3: `${settings.groomName} & ${settings.brideName}`,
+      },
+    },
+    moderation: { ...DEFAULT_MODERATION },
+    photoManagement: { ...DEFAULT_PHOTO_MANAGEMENT, afterUploadBehavior: "stay-in-camera" },
+  });
+
+  write(EVENTS_KEY, [...getEvents(), event]);
+  return event;
+}
+
+export { isEventJoinable, isEventUploadsAllowed };
+
 export function getGuests(eventId?: string): Guest[] {
   const guests = read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []);
   return eventId ? guests.filter((g) => g.eventId === eventId) : guests;
@@ -235,6 +321,11 @@ export function registerGuest(
   eventId: string,
   data: Pick<Guest, "firstName" | "lastName" | "relationship">
 ): Guest {
+  const event = getEvent(eventId) ?? ensureEvent(eventId);
+  if (!event || !isEventJoinable(event)) {
+    throw new Error("This wedding is not accepting guests right now.");
+  }
+
   const guest: Guest & { eventId: string } = {
     id: uuidv4(),
     ...data,
@@ -573,6 +664,12 @@ export function getActiveEvents(): WeddingEvent[] {
   return getEvents().filter((e) => e.status !== "archived");
 }
 
+export function getManageableEvents(): WeddingEvent[] {
+  return getEvents().sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
 export function getArchivedEvents(): WeddingEvent[] {
   return getEvents().filter((e) => e.status === "archived");
 }
@@ -581,6 +678,20 @@ export function archiveEvent(eventId: string): boolean {
   const event = getEvent(eventId);
   if (!event || event.status === "archived") return false;
   saveEvent({ ...event, status: "archived", archivedAt: new Date().toISOString() });
+  return true;
+}
+
+export function pauseEvent(eventId: string): boolean {
+  const event = getEvent(eventId);
+  if (!event || event.status === "archived") return false;
+  saveEvent({ ...event, status: "paused" });
+  return true;
+}
+
+export function activateEvent(eventId: string): boolean {
+  const event = getEvent(eventId);
+  if (!event) return false;
+  saveEvent({ ...event, status: "active", archivedAt: undefined });
   return true;
 }
 
@@ -645,21 +756,20 @@ export function createNewWeddingEvent(
 
   archiveEvent(sourceEventId);
 
-  const mergedSettings = { ...source.settings, ...settings };
-  const newEvent = migrateEvent({
-    ...source,
-    id: `wedding-${uuidv4().slice(0, 8)}`,
-    createdAt: new Date().toISOString(),
-    status: "active",
-    archivedAt: undefined,
-    settings: mergedSettings,
-    coupleName: `${mergedSettings.brideName} & ${mergedSettings.groomName}`,
-    weddingDate: mergedSettings.weddingDate,
-    venue: mergedSettings.venue,
-  });
+  const merged = { ...source.settings, ...settings };
+  const preset = source.theme.preset !== "custom" ? source.theme.preset : "champagne";
 
-  write(EVENTS_KEY, [...getEvents(), newEvent]);
-  return newEvent;
+  return createWeddingEvent({
+    brideName: merged.brideName,
+    groomName: merged.groomName,
+    weddingDate: merged.weddingDate,
+    venue: merged.venue,
+    hashtag: merged.hashtag,
+    welcomeMessage: merged.welcomeMessage,
+    maxPhotos: source.photoLimits.maxPhotos,
+    themePreset: preset,
+    couplePhoto: source.theme.hero.couplePhoto ?? source.theme.backgroundImage,
+  });
 }
 
 export function getStorageDashboard(): StorageDashboardStats {
@@ -681,6 +791,10 @@ export function getStorageDashboard(): StorageDashboardStats {
 }
 
 export function ensureEvent(eventId: string): WeddingEvent | undefined {
+  if (eventId === DEMO_EVENT_ID) {
+    seedDemoEvent();
+    return getEvent(eventId) ?? getHardcodedDemoEvent();
+  }
   seedDemoEvent();
   return getEvent(eventId);
 }
