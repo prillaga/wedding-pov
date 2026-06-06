@@ -132,6 +132,12 @@ export function PhotoPreviewScreen({
           </p>
         )}
 
+        {!replaceMode && !markAsExtra && (
+          <p className="text-xs text-center text-ivory/50 px-2">
+            Retake and delete do not count toward your upload limit.
+          </p>
+        )}
+
         <input
           value={caption}
           onChange={(e) => onCaptionChange(e.target.value)}

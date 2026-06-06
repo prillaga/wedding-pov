@@ -33,9 +33,11 @@ import {
   Shield,
   Sliders,
   Trash2,
+  Users,
 } from "lucide-react";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
 import { EventArchiveManager } from "./EventArchiveManager";
+import { GuestManagementPanel } from "./GuestManagementPanel";
 import { EventStatusPanel } from "./EventStatusPanel";
 import { HeroBannerEditor } from "./HeroBannerEditor";
 import { PhotoLimitManager } from "./PhotoLimitManager";
@@ -53,6 +55,7 @@ type AdminTab =
   | "slideshow"
   | "templates"
   | "moderation"
+  | "guests"
   | "archive"
   | "highlights";
 
@@ -90,6 +93,7 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
     { id: "slideshow", label: "Slideshow", icon: <Film className="w-4 h-4" /> },
     { id: "templates", label: "Templates", icon: <Bookmark className="w-4 h-4" /> },
     { id: "moderation", label: "Moderation", icon: <Shield className="w-4 h-4" /> },
+    { id: "guests", label: "Guests", icon: <Users className="w-4 h-4" /> },
     { id: "archive", label: "Archive", icon: <FolderArchive className="w-4 h-4" /> },
     { id: "highlights", label: "AI Reels", icon: <Film className="w-4 h-4" /> },
   ];
@@ -232,6 +236,10 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
             ))}
           </div>
         </div>
+      )}
+
+      {tab === "guests" && (
+        <GuestManagementPanel event={event} onRefresh={refresh} />
       )}
 
       {tab === "archive" && (

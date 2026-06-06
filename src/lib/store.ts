@@ -537,6 +537,64 @@ export function getGuest(guestId: string): (Guest & { eventId?: string }) | unde
   return read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).find((g) => g.id === guestId);
 }
 
+export function updateGuest(
+  guestId: string,
+  eventId: string,
+  data: Pick<Guest, "firstName" | "lastName">
+): boolean {
+  const guests = read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []);
+  const index = guests.findIndex((g) => g.id === guestId && g.eventId === eventId);
+  if (index < 0) return false;
+
+  const firstName = data.firstName.trim();
+  const lastName = data.lastName.trim();
+  if (!firstName || !lastName) return false;
+
+  guests[index] = { ...guests[index], firstName, lastName };
+  write(GUESTS_KEY, guests);
+
+  const guestName = `${firstName} ${lastName}`;
+  writePersistedUploads(
+    readPersistedUploads().map((upload) =>
+      upload.guestId === guestId && upload.eventId === eventId
+        ? { ...upload, guestName }
+        : upload
+    )
+  );
+
+  return true;
+}
+
+function purgeGuestUploads(guestId: string, eventId: string): void {
+  const records = readPersistedUploads();
+  const removed = records.filter((u) => u.guestId === guestId && u.eventId === eventId);
+  const kept = records.filter((u) => !(u.guestId === guestId && u.eventId === eventId));
+
+  removed.forEach((u) => uploadMediaCache.delete(u.id));
+  void deleteUploadMediaBatch(removed.map((u) => u.id));
+  writePersistedUploads(kept);
+}
+
+export function removeGuest(guestId: string, eventId: string): boolean {
+  const guests = read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []);
+  const next = guests.filter((g) => !(g.id === guestId && g.eventId === eventId));
+  if (next.length === guests.length) return false;
+
+  write(GUESTS_KEY, next);
+  purgeGuestUploads(guestId, eventId);
+
+  const session = getSession();
+  if (session?.guestId === guestId && session.eventId === eventId) {
+    clearSession();
+  }
+
+  return true;
+}
+
+export function resetGuestUploadCount(guestId: string, eventId: string): void {
+  purgeGuestUploads(guestId, eventId);
+}
+
 export interface Session {
   eventId: string;
   guestId: string;

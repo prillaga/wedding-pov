@@ -77,8 +77,15 @@ export default function HomePage() {
           </p>
 
           <Link
+            href="/pricing"
+            className="flex items-center justify-center gap-2 text-xs text-warm-gray hover:text-champagne transition-colors"
+          >
+            View Pricing
+          </Link>
+
+          <Link
             href="/dashboard"
-            className="flex items-center justify-center gap-2 text-xs text-warm-gray hover:text-champagne transition-colors pt-2"
+            className="flex items-center justify-center gap-2 text-xs text-warm-gray hover:text-champagne transition-colors pt-1"
           >
             <Settings className="w-3.5 h-3.5" />
             Admin Dashboard
