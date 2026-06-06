@@ -1,15 +1,23 @@
 "use client";
 
+import { useLayoutEffect } from "react";
 import { useParams } from "next/navigation";
 import { PresentationSlideshow } from "@/components/slideshow/PresentationSlideshow";
 import { useEventPhotos } from "@/hooks/useEventPhotos";
-import { getEvent } from "@/lib/store";
+import { getEvent, seedDemoEvent, seedSampleUploads } from "@/lib/store";
 
 export default function DisplayModePage() {
   const params = useParams();
   const eventId = params.eventId as string;
+  const { photos, loading, refresh } = useEventPhotos(eventId, { pollIntervalMs: 2000 });
+
+  useLayoutEffect(() => {
+    seedDemoEvent();
+    seedSampleUploads(eventId);
+    refresh();
+  }, [eventId, refresh]);
+
   const event = getEvent(eventId);
-  const { photos, loading } = useEventPhotos(eventId, { pollIntervalMs: 2000 });
 
   return (
     <PresentationSlideshow

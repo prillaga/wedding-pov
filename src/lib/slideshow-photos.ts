@@ -10,13 +10,13 @@ export function slideshowLog(message: string, data?: unknown): void {
   }
 }
 
-/** Approved visible photos only — skips removed/hidden/pending, chronological order */
+/** Approved visible photos — matches gallery; includes pending uploads awaiting review */
 export function filterSlideshowPhotos(uploads: Upload[]): Upload[] {
   return uploads
     .filter(
       (u) =>
         u.status !== "removed" &&
-        (u.status === "approved" || u.status === "extra")
+        (u.status === "approved" || u.status === "pending" || u.status === "extra")
     )
     .sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()

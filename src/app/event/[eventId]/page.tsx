@@ -25,9 +25,10 @@ import { Sparkles } from "lucide-react";
 export default function EventHomePage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { photos: slideshowPhotos, loading: slideshowLoading } = useEventPhotos(eventId, {
-    pollIntervalMs: 3000,
-  });
+  const { photos: slideshowPhotos, loading: slideshowLoading, refresh: refreshPhotos } =
+    useEventPhotos(eventId, {
+      pollIntervalMs: 3000,
+    });
   const [event, setEvent] = useState<WeddingEvent | null | undefined>(undefined);
   const [guest, setGuest] = useState<(Guest & { eventId?: string }) | null>(null);
 
@@ -37,7 +38,8 @@ export default function EventHomePage() {
     setEvent(getEvent(eventId) ?? null);
     const session = getSession();
     setGuest(session ? getGuest(session.guestId) ?? null : null);
-  }, [eventId]);
+    refreshPhotos();
+  }, [eventId, refreshPhotos]);
 
   if (event === undefined) {
     return (

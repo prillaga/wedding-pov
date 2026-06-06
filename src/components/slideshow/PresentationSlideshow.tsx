@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
+import { filterSlideshowPhotos } from "@/lib/slideshow-photos";
 import { usePresentationControls } from "@/hooks/usePresentationControls";
 import type { SlideshowIntroOutro, SlideshowStyle, Upload } from "@/types";
 import { Monitor, Play } from "lucide-react";
@@ -41,6 +43,7 @@ export function PresentationSlideshow({
   exitHref,
 }: PresentationSlideshowProps) {
   const router = useRouter();
+  const photoCount = useMemo(() => filterSlideshowPhotos(uploads).length, [uploads]);
   const {
     containerRef,
     controlsVisible,
@@ -100,6 +103,13 @@ export function PresentationSlideshow({
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-champagne/20 text-champagne text-sm font-medium">
               <Play className="w-4 h-4" /> Tap to Start
             </span>
+            {!loading && (
+              <p className="text-ivory/40 text-xs">
+                {photoCount > 0
+                  ? `${photoCount} photo${photoCount === 1 ? "" : "s"} ready to play`
+                  : "No guest photos yet — sample photos will appear after you join and upload"}
+              </p>
+            )}
             <p className="text-ivory/30 text-xs">Tap anywhere for playback controls</p>
           </div>
         </button>

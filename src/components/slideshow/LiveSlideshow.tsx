@@ -72,7 +72,7 @@ function getTransitionVariants(style: SlideshowStyle) {
       };
     default:
       return {
-        initial: { opacity: 0 },
+        initial: { opacity: 1 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
       };
@@ -83,7 +83,7 @@ function TitleCard({ data, displayMode }: { data: SlideshowIntroOutro; displayMo
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-charcoal text-center px-8">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2 }}
       >
@@ -281,7 +281,7 @@ export function LiveSlideshow({
     );
   }
 
-  if (photos.length === 0 && !intro) {
+  if (photos.length === 0) {
     return (
       <SlideshowEmptyState
         displayMode={displayMode || presentationMode}
@@ -290,7 +290,7 @@ export function LiveSlideshow({
     );
   }
 
-  if (photos.length === 0 && phase !== "intro") {
+  if (phase === "slides" && !current) {
     return (
       <SlideshowEmptyState
         displayMode={displayMode || presentationMode}
@@ -365,6 +365,9 @@ export function LiveSlideshow({
                 className={`w-full object-cover ${
                   style === "polaroid-drop" ? "aspect-square" : "h-full animate-kenburns"
                 }`}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
