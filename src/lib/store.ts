@@ -48,12 +48,105 @@ import {
   isEventUploadsAllowed,
 } from "./event-utils";
 import { formatGuestNamePOV } from "./utils";
+import {
+  clearAllUploadMedia,
+  deleteUploadMedia,
+  deleteUploadMediaBatch,
+  getUploadMedia,
+  saveUploadMedia,
+} from "./upload-media-store";
 
 const EVENTS_KEY = "wedding-pov-events";
 const GUESTS_KEY = "wedding-pov-guests";
 const UPLOADS_KEY = "wedding-pov-uploads";
 const SESSION_KEY = "wedding-pov-session";
 const TEMPLATES_KEY = "wedding-pov-templates";
+
+type PersistedUpload = Omit<Upload, "imageData"> & { imageData?: string };
+
+const uploadMediaCache = new Map<string, string>();
+let uploadsHydrated = false;
+let uploadsHydratePromise: Promise<void> | null = null;
+
+function stripImageData(upload: Upload | PersistedUpload): PersistedUpload {
+  const { imageData: _removed, ...meta } = upload as Upload;
+  return meta;
+}
+
+function enrichUpload(record: PersistedUpload): Upload {
+  return {
+    ...record,
+    imageData: uploadMediaCache.get(record.id) ?? record.imageData ?? "",
+  };
+}
+
+function readPersistedUploads(): PersistedUpload[] {
+  return read<PersistedUpload[]>(UPLOADS_KEY, []);
+}
+
+function writePersistedUploads(records: PersistedUpload[]): boolean {
+  return write(UPLOADS_KEY, records);
+}
+
+async function migrateLegacyUploadMedia(records: PersistedUpload[]): Promise<PersistedUpload[]> {
+  let changed = false;
+  const next: PersistedUpload[] = [];
+
+  for (const record of records) {
+    if (record.imageData && record.imageData.length > 32) {
+      const ok = await saveUploadMedia(record.id, record.imageData);
+      if (ok) {
+        uploadMediaCache.set(record.id, record.imageData);
+        const { imageData: _removed, ...meta } = record;
+        next.push(meta);
+        changed = true;
+        continue;
+      }
+    }
+    next.push(record);
+  }
+
+  if (changed) {
+    writePersistedUploads(next);
+  }
+
+  return changed ? next : records;
+}
+
+/** Load photo blobs from IndexedDB (and migrate legacy localStorage blobs). */
+export async function ensureUploadsHydrated(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (uploadsHydrated) return;
+  if (uploadsHydratePromise) return uploadsHydratePromise;
+
+  uploadsHydratePromise = (async () => {
+    let records = readPersistedUploads();
+    records = await migrateLegacyUploadMedia(records);
+
+    await Promise.all(
+      records.map(async (record) => {
+        if (uploadMediaCache.has(record.id)) return;
+        if (record.imageData) {
+          uploadMediaCache.set(record.id, record.imageData);
+          return;
+        }
+        const media = await getUploadMedia(record.id);
+        if (media) uploadMediaCache.set(record.id, media);
+      })
+    );
+
+    uploadsHydrated = true;
+    window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
+  })().finally(() => {
+    uploadsHydratePromise = null;
+  });
+
+  return uploadsHydratePromise;
+}
+
+if (typeof window !== "undefined") {
+  void ensureUploadsHydrated();
+}
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -161,6 +254,9 @@ export function resetAppData(): void {
   localStorage.removeItem(UPLOADS_KEY);
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(TEMPLATES_KEY);
+  uploadMediaCache.clear();
+  uploadsHydrated = false;
+  void clearAllUploadMedia();
 }
 
 export function getEvent(eventId: string): WeddingEvent | undefined {
@@ -471,15 +567,17 @@ export function clearSession(): void {
 }
 
 export function getUploads(eventId: string, includeRemoved = false): Upload[] {
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  return uploads
+  return readPersistedUploads()
     .filter((u) => u.eventId === eventId && (includeRemoved || u.status !== "removed"))
+    .map(enrichUpload)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 /** All uploads for quota counting, including slot-locked removed entries */
 export function getAllUploadsForQuota(eventId: string): Upload[] {
-  return read<Upload[]>(UPLOADS_KEY, []).filter((u) => u.eventId === eventId);
+  return readPersistedUploads()
+    .filter((u) => u.eventId === eventId)
+    .map(enrichUpload);
 }
 
 export function getGuestUploads(eventId: string, guestId: string): Upload[] {
@@ -492,29 +590,40 @@ export function getApprovedUploads(eventId: string): Upload[] {
   );
 }
 
-export function addUpload(
+export async function addUpload(
   data: Omit<Upload, "id" | "createdAt" | "status"> & { isExtra?: boolean }
-): Upload | null {
+): Promise<Upload | null> {
   const event = getEvent(data.eventId);
   if (event?.moderation.uploadsDisabled) return null;
 
+  const id = uuidv4();
+  const savedMedia = await saveUploadMedia(id, data.imageData);
+  if (!savedMedia) return null;
+
+  uploadMediaCache.set(id, data.imageData);
+
   const upload: Upload = {
     ...data,
-    id: uuidv4(),
+    id,
     status: data.isExtra ? "extra" : event?.moderation.autoApprove ? "approved" : "pending",
     createdAt: new Date().toISOString(),
   };
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  const saved = write(UPLOADS_KEY, [upload, ...uploads]);
-  if (!saved) return null;
+
+  const records = readPersistedUploads();
+  const saved = writePersistedUploads([stripImageData(upload), ...records]);
+  if (!saved) {
+    uploadMediaCache.delete(id);
+    await deleteUploadMedia(id);
+    return null;
+  }
+
   return upload;
 }
 
 export function updateUploadStatus(uploadId: string, status: Upload["status"]): void {
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  write(
-    UPLOADS_KEY,
-    uploads.map((u) => (u.id === uploadId ? { ...u, status } : u))
+  const records = readPersistedUploads();
+  writePersistedUploads(
+    records.map((u) => (u.id === uploadId ? { ...u, status } : u))
   );
 }
 
@@ -527,37 +636,45 @@ export function deleteGuestUpload(
   guestId: string,
   restoreSlot: boolean
 ): boolean {
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  const upload = uploads.find((u) => u.id === uploadId && u.guestId === guestId);
+  const records = readPersistedUploads();
+  const upload = records.find((u) => u.id === uploadId && u.guestId === guestId);
   if (!upload || upload.status === "removed") return false;
 
-  write(
-    UPLOADS_KEY,
-    uploads.map((u) =>
+  writePersistedUploads(
+    records.map((u) =>
       u.id === uploadId
         ? { ...u, status: "removed" as const, slotLocked: !restoreSlot }
         : u
     )
   );
+
+  if (restoreSlot) {
+    uploadMediaCache.delete(uploadId);
+    void deleteUploadMedia(uploadId);
+  }
+
   return true;
 }
 
-export function replaceUpload(
+export async function replaceUpload(
   uploadId: string,
   guestId: string,
   data: Pick<Upload, "imageData" | "caption" | "filter" | "segment"> & { isVideo?: boolean }
-): boolean {
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  const upload = uploads.find((u) => u.id === uploadId && u.guestId === guestId);
+): Promise<boolean> {
+  const records = readPersistedUploads();
+  const upload = records.find((u) => u.id === uploadId && u.guestId === guestId);
   if (!upload || upload.status === "removed") return false;
 
-  return write(
-    UPLOADS_KEY,
-    uploads.map((u) =>
+  const savedMedia = await saveUploadMedia(uploadId, data.imageData);
+  if (!savedMedia) return false;
+
+  uploadMediaCache.set(uploadId, data.imageData);
+
+  return writePersistedUploads(
+    records.map((u) =>
       u.id === uploadId
         ? {
             ...u,
-            imageData: data.imageData,
             caption: data.caption,
             filter: data.filter,
             segment: data.segment,
@@ -569,10 +686,9 @@ export function replaceUpload(
 }
 
 export function approveAllPending(eventId: string): void {
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  write(
-    UPLOADS_KEY,
-    uploads.map((u) =>
+  const records = readPersistedUploads();
+  writePersistedUploads(
+    records.map((u) =>
       u.eventId === eventId && u.status === "pending"
         ? { ...u, status: "approved" as const }
         : u
@@ -753,7 +869,7 @@ export function seedSampleUploads(eventId: string): void {
       ctx.fillStyle = "#6B6560";
       ctx.fillText(formatGuestNamePOV(`${guest.firstName} ${guest.lastName}`), 200, 170);
 
-      addUpload({
+      void addUpload({
         eventId,
         guestId: guest.id,
         guestName: `${guest.firstName} ${guest.lastName}`,
@@ -814,10 +930,11 @@ export function restoreEvent(eventId: string): boolean {
 }
 
 export function clearEventGuestData(eventId: string): void {
-  write(
-    UPLOADS_KEY,
-    read<Upload[]>(UPLOADS_KEY, []).filter((u) => u.eventId !== eventId)
-  );
+  const records = readPersistedUploads();
+  const removed = records.filter((u) => u.eventId === eventId);
+  writePersistedUploads(records.filter((u) => u.eventId !== eventId));
+  removed.forEach((u) => uploadMediaCache.delete(u.id));
+  void deleteUploadMediaBatch(removed.map((u) => u.id));
   write(
     GUESTS_KEY,
     read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).filter((g) => g.eventId !== eventId)
@@ -885,7 +1002,7 @@ export function createNewWeddingEvent(
 
 export function getStorageDashboard(): StorageDashboardStats {
   const events = getEvents();
-  const uploads = read<Upload[]>(UPLOADS_KEY, []);
+  const uploads = readPersistedUploads().map(enrichUpload);
   const activeUploads = uploads.filter((u) => u.status !== "removed");
   const storageBytes = activeUploads.reduce(
     (sum, u) => sum + (u.imageData?.length ?? 0) * 0.75,

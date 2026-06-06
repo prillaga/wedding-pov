@@ -1,4 +1,4 @@
-import { getApprovedUploads } from "@/lib/store";
+import { ensureUploadsHydrated, getApprovedUploads } from "@/lib/store";
 import { fetchPhotosFromFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import type { Upload } from "@/types";
 
@@ -33,6 +33,8 @@ export function getSlideshowPhotos(eventId: string): Upload[] {
 }
 
 export async function fetchSlideshowPhotos(eventId: string): Promise<Upload[]> {
+  await ensureUploadsHydrated();
+
   if (isFirebaseConfigured()) {
     try {
       const remote = await fetchPhotosFromFirebase(eventId);

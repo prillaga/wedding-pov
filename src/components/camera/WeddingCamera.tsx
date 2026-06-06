@@ -322,7 +322,7 @@ export function WeddingCamera({
       }
 
       if (isReplaceMode && replaceUploadId) {
-        const ok = replaceUpload(replaceUploadId, guest.id, {
+        const ok = await replaceUpload(replaceUploadId, guest.id, {
           imageData,
           caption: caption || undefined,
           filter,
@@ -331,12 +331,12 @@ export function WeddingCamera({
         });
         if (!ok) {
           showSuccess(
-            "Could not save photo. Your phone storage may be full — delete old photos in My Uploads and try again."
+            "Could not save photo. Try deleting old photos in My Uploads, then try again."
           );
           return;
         }
       } else {
-        const saved = addUpload({
+        const saved = await addUpload({
           eventId,
           guestId: guest.id,
           guestName,
@@ -351,7 +351,7 @@ export function WeddingCamera({
           showSuccess(
             event?.moderation.uploadsDisabled
               ? "Uploads are paused for this event."
-              : "Could not save photo. Your phone storage may be full — delete old photos in My Uploads and try again."
+              : "Could not save photo. Try deleting old photos in My Uploads, then try again."
           );
           return;
         }

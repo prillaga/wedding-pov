@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { POVBadge } from "@/components/layout/PageHeader";
@@ -8,6 +8,7 @@ import { PhotoSaveActions } from "@/components/photos/PhotoSaveActions";
 import { getGuestUploadQuota } from "@/lib/photo-limits";
 import {
   deleteGuestUpload,
+  ensureUploadsHydrated,
   getAllUploadsForQuota,
   getEvent,
   getGuestUploads,
@@ -32,6 +33,13 @@ export function MyUploads({ eventId, guest, onReplace, onChange }: MyUploadsProp
   const event = getEvent(eventId);
   const [viewUpload, setViewUpload] = useState<Upload | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    void ensureUploadsHydrated().then(() => setRefreshKey((k) => k + 1));
+    const onReady = () => setRefreshKey((k) => k + 1);
+    window.addEventListener("wedding-pov:uploads-ready", onReady);
+    return () => window.removeEventListener("wedding-pov:uploads-ready", onReady);
+  }, []);
 
   const uploads = useMemo(
     () => getGuestUploads(eventId, guest.id),
