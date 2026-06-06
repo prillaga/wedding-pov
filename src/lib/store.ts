@@ -181,15 +181,6 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   const id = normalizeEventId(eventId);
   if (!id) return null;
 
-  if (isDemoEventId(id)) {
-    return cacheEventLocally(getHardcodedDemoEvent());
-  }
-
-  const published = getPublicEvent(id);
-  if (published) {
-    return cacheEventLocally(published);
-  }
-
   const bootstrap = readBootstrapFromLocation();
   if (bootstrap && normalizeEventId(bootstrap.id) === id) {
     return cacheEventLocally(bootstrap);
@@ -206,6 +197,15 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   const remote = await fetchRemoteEvent(id);
   if (remote) {
     return cacheEventLocally(remote);
+  }
+
+  if (isDemoEventId(id)) {
+    return cacheEventLocally(getHardcodedDemoEvent());
+  }
+
+  const published = getPublicEvent(id);
+  if (published) {
+    return cacheEventLocally(published);
   }
 
   return null;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  getCloudStorageKind,
   isCloudStorageConfigured,
   readEventFromCloud,
   verifyAdminPassword,
@@ -51,8 +52,10 @@ export async function PUT(
   if (!isCloudStorageConfigured()) {
     return NextResponse.json(
       {
-        error: "Cloud storage is not configured. Connect Vercel KV to sync events across devices.",
+        error:
+          "Cloud storage is not connected. In Vercel: Storage → Create Blob Store → connect to wedding-pov.",
         cloudConfigured: false,
+        kind: getCloudStorageKind(),
       },
       { status: 503 }
     );

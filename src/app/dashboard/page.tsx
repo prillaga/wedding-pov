@@ -2,6 +2,7 @@
 
 import { useLayoutEffect } from "react";
 import Link from "next/link";
+import { CloudSyncBanner } from "@/components/admin/CloudSyncBanner";
 import { MyEventsPanel } from "@/components/dashboard/MyEventsPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { seedDemoEvent } from "@/lib/store";
@@ -24,6 +25,7 @@ export default function AdminHomePage() {
       </PageHeader>
 
       <div className="px-5 space-y-4">
+        <CloudSyncBanner />
         <div className="p-4 rounded-2xl bg-gradient-to-r from-charcoal to-black text-white border border-champagne/20 flex items-start gap-3">
           <Settings className="w-5 h-5 text-champagne shrink-0 mt-0.5" />
           <div>

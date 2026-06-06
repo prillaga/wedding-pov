@@ -7,6 +7,7 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { EventQRCode } from "@/components/qr/EventQRCode";
 import { PHOTO_LIMIT_OPTIONS, THEME_PRESETS } from "@/lib/constants";
 import { generateDefaultHashtag } from "@/lib/event-utils";
+import { pushRemoteEvent } from "@/lib/event-remote";
 import { createWeddingEvent } from "@/lib/store";
 import type { PhotoLimitValue, ThemePreset } from "@/types";
 import { Calendar, Heart, ImagePlus, Sparkles } from "lucide-react";
@@ -35,6 +36,7 @@ export function CreateWeddingEventForm() {
   const [createdEvent, setCreatedEvent] = useState<ReturnType<typeof createWeddingEvent> | null>(
     null
   );
+  const [syncWarning, setSyncWarning] = useState("");
 
   const previewHashtag =
     hashtag ||
@@ -45,6 +47,7 @@ export function CreateWeddingEventForm() {
   const handleCreate = () => {
     if (!brideName.trim() || !groomName.trim() || !weddingDate || !venue.trim()) return;
     setCreating(true);
+    setSyncWarning("");
     try {
       const event = createWeddingEvent({
         brideName,
@@ -58,6 +61,14 @@ export function CreateWeddingEventForm() {
         couplePhoto,
       });
       setCreatedEvent(event);
+      void pushRemoteEvent(event).then((result) => {
+        if (!result.ok) {
+          setSyncWarning(
+            result.error ??
+              "Event saved on this device only. Open Admin Dashboard and tap Sync Now after connecting Vercel Blob storage."
+          );
+        }
+      });
     } finally {
       setCreating(false);
     }
@@ -74,6 +85,11 @@ export function CreateWeddingEventForm() {
             photos immediately. Re-download the QR after any changes so every guest phone can find
             the event.
           </p>
+          {syncWarning && (
+            <p className="text-sm text-amber-800 mt-3 px-3 py-2 rounded-lg bg-amber-100 text-left">
+              {syncWarning}
+            </p>
+          )}
         </div>
 
         <div className="p-6 rounded-2xl bg-white wedding-shadow border border-champagne/10">
