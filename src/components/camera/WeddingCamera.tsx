@@ -9,7 +9,7 @@ import { PostUploadPrompt } from "@/components/camera/PostUploadPrompt";
 import { UploadIndicator } from "@/components/camera/UploadIndicator";
 import { UploadsDisabledScreen } from "@/components/camera/UploadsDisabledScreen";
 import { FILTERS, SEGMENTS } from "@/lib/constants";
-import { getFilterCss } from "@/lib/image-utils";
+import { compressImageForUpload, getFilterCss } from "@/lib/image-utils";
 import { canGuestUpload } from "@/lib/photo-limits";
 import {
   addUpload,
@@ -207,7 +207,7 @@ export function WeddingCamera({
     [isReplaceMode, onNavigate, showSuccess]
   );
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!isReplaceMode && !uploadCheck.allowed && !uploadCheck.markAsExtra) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -221,7 +221,13 @@ export function WeddingCamera({
     ctx.filter = filterCss;
     ctx.drawImage(video, 0, 0);
     stopStream();
-    setCaptured(canvas.toDataURL("image/jpeg", 0.92));
+
+    const raw = canvas.toDataURL("image/jpeg", 0.92);
+    try {
+      setCaptured(await compressImageForUpload(raw));
+    } catch {
+      setCaptured(raw);
+    }
   };
 
   const startRecording = () => {
@@ -260,44 +266,71 @@ export function WeddingCamera({
     if (!captured) return;
     setUploading(true);
 
-    if (isReplaceMode && replaceUploadId) {
-      replaceUpload(replaceUploadId, guest.id, {
-        imageData: captured,
-        caption: caption || undefined,
-        filter,
-        segment,
-        isVideo: mode === "video",
-      });
-    } else {
-      addUpload({
-        eventId,
-        guestId: guest.id,
-        guestName,
-        imageData: captured,
-        caption: caption || undefined,
-        segment,
-        filter,
-        isVideo: mode === "video",
-        isExtra: uploadCheck.markAsExtra,
-      });
+    try {
+      let imageData = captured;
+      if (mode !== "video") {
+        try {
+          imageData = await compressImageForUpload(captured);
+        } catch {
+          imageData = captured;
+        }
+      }
+
+      if (isReplaceMode && replaceUploadId) {
+        const ok = replaceUpload(replaceUploadId, guest.id, {
+          imageData,
+          caption: caption || undefined,
+          filter,
+          segment,
+          isVideo: mode === "video",
+        });
+        if (!ok) {
+          showSuccess(
+            "Could not save photo. Your phone storage may be full — delete old photos in My Uploads and try again."
+          );
+          return;
+        }
+      } else {
+        const saved = addUpload({
+          eventId,
+          guestId: guest.id,
+          guestName,
+          imageData,
+          caption: caption || undefined,
+          segment,
+          filter,
+          isVideo: mode === "video",
+          isExtra: uploadCheck.markAsExtra,
+        });
+        if (!saved) {
+          showSuccess(
+            event?.moderation.uploadsDisabled
+              ? "Uploads are paused for this event."
+              : "Could not save photo. Your phone storage may be full — delete old photos in My Uploads and try again."
+          );
+          return;
+        }
+      }
+
+      setLastUploadedMedia({ data: imageData, isVideo: mode === "video" });
+      setCaption("");
+      setUploadTick((t) => t + 1);
+      setCaptured(null);
+
+      const behavior = photoMgmt?.afterUploadBehavior ?? "stay-in-camera";
+
+      if (isReplaceMode) {
+        showSuccess("Photo replaced successfully.");
+        onNavigate?.("my-uploads");
+        return;
+      }
+
+      handleAfterUpload(behavior);
+    } catch {
+      showSuccess("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
     }
-
-    setLastUploadedMedia({ data: captured, isVideo: mode === "video" });
-
-    setUploading(false);
-    setCaption("");
-    setUploadTick((t) => t + 1);
-    setCaptured(null);
-
-    const behavior = photoMgmt?.afterUploadBehavior ?? "stay-in-camera";
-
-    if (isReplaceMode) {
-      showSuccess("Photo replaced successfully.");
-      onNavigate?.("my-uploads");
-      return;
-    }
-
-    handleAfterUpload(behavior);
   };
 
   const retake = () => {

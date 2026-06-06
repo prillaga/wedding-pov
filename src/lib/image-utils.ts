@@ -1,6 +1,10 @@
 import { FILTERS } from "@/lib/constants";
 import type { CameraFilter } from "@/types";
 
+/** Max long edge for stored guest photos — keeps localStorage fast and within mobile quotas. */
+export const UPLOAD_MAX_EDGE = 1600;
+export const UPLOAD_JPEG_QUALITY = 0.82;
+
 export function getFilterCss(filter: CameraFilter): string {
   return FILTERS.find((f) => f.value === filter)?.css ?? "none";
 }
@@ -22,7 +26,37 @@ export function applyFilterToImage(
       }
       ctx.filter = getFilterCss(filter);
       ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/jpeg", 0.92));
+      resolve(canvas.toDataURL("image/jpeg", UPLOAD_JPEG_QUALITY));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = imageDataUrl;
+  });
+}
+
+/** Resize and compress before saving — full phone camera JPEGs exceed mobile localStorage limits quickly. */
+export function compressImageForUpload(
+  imageDataUrl: string,
+  maxEdge = UPLOAD_MAX_EDGE,
+  quality = UPLOAD_JPEG_QUALITY
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const longEdge = Math.max(img.width, img.height);
+      const scale = longEdge > maxEdge ? maxEdge / longEdge : 1;
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas unavailable"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
     };
     img.onerror = () => reject(new Error("Failed to load image"));
     img.src = imageDataUrl;
@@ -49,7 +83,7 @@ export function cropImage(imageDataUrl: string, rect: CropRect): Promise<string>
         return;
       }
       ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.92));
+      resolve(canvas.toDataURL("image/jpeg", UPLOAD_JPEG_QUALITY));
     };
     img.onerror = () => reject(new Error("Failed to load image"));
     img.src = imageDataUrl;

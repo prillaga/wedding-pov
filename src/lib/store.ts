@@ -63,9 +63,15 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write<T>(key: string, value: T): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+function write<T>(key: string, value: T): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (err) {
+    console.error("[WeddingPOV] Storage write failed:", err);
+    return false;
+  }
 }
 
 function mergeHeroSettings(raw?: Partial<HeroSettings>): HeroSettings {
@@ -485,7 +491,8 @@ export function addUpload(
     createdAt: new Date().toISOString(),
   };
   const uploads = read<Upload[]>(UPLOADS_KEY, []);
-  write(UPLOADS_KEY, [upload, ...uploads]);
+  const saved = write(UPLOADS_KEY, [upload, ...uploads]);
+  if (!saved) return null;
   return upload;
 }
 
@@ -530,7 +537,7 @@ export function replaceUpload(
   const upload = uploads.find((u) => u.id === uploadId && u.guestId === guestId);
   if (!upload || upload.status === "removed") return false;
 
-  write(
+  return write(
     UPLOADS_KEY,
     uploads.map((u) =>
       u.id === uploadId
@@ -545,7 +552,6 @@ export function replaceUpload(
         : u
     )
   );
-  return true;
 }
 
 export function approveAllPending(eventId: string): void {
