@@ -413,7 +413,7 @@ export function WeddingCamera({
           )}
 
           {showingPreview && photoMgmt && (
-            <div className="absolute inset-0 z-20">
+            <div className="absolute inset-0 z-20 flex flex-col h-full min-h-0">
               <PhotoPreviewScreen
                 guest={guest}
                 imageData={captured!}

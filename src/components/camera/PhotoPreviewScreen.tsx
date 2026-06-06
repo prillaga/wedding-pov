@@ -10,6 +10,7 @@ import { formatGuestPOV } from "@/lib/utils";
 import type { CameraFilter, Guest, PhotoManagementSettings } from "@/types";
 import {
   Check,
+  ChevronDown,
   Crop,
   RotateCcw,
   SlidersHorizontal,
@@ -54,6 +55,7 @@ export function PhotoPreviewScreen({
 }: PhotoPreviewScreenProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
 
   const handleFilterSelect = async (next: CameraFilter) => {
     if (isVideo) {
@@ -86,15 +88,16 @@ export function PhotoPreviewScreen({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex-1 flex flex-col min-h-0"
+      className="flex flex-col h-full min-h-0 bg-charcoal"
     >
-      <div className="relative flex-1 min-h-0 bg-black">
+      <div className="relative w-full shrink-0 h-[38svh] max-h-[42svh] sm:h-auto sm:max-h-none sm:flex-1 sm:min-h-0 bg-black">
         {isVideo ? (
           <video
             src={imageData}
             controls
             autoPlay
             loop
+            playsInline
             className="w-full h-full object-contain"
           />
         ) : (
@@ -109,15 +112,15 @@ export function PhotoPreviewScreen({
             <p className="text-ivory text-sm">Processing…</p>
           </div>
         )}
-        <div className="absolute top-3 left-3 right-3">
+        <div className="absolute top-3 left-3 right-3 pointer-events-none">
           <p className="text-center text-xs text-ivory/80 uppercase tracking-wider">
             Photo Preview
           </p>
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 bg-charcoal/95 space-y-3 safe-bottom border-t border-white/10 max-h-[min(48dvh,420px)] touch-scroll-y shrink-0">
-        <p className="text-champagne text-sm font-serif text-center">
+      <div className="flex-1 min-h-0 overflow-y-auto touch-scroll-y overscroll-contain px-3 py-2 space-y-2 safe-x">
+        <p className="text-champagne text-sm font-serif text-center pt-1">
           {formatGuestPOV(guest)}
         </p>
         {markAsExtra && (
@@ -129,8 +132,28 @@ export function PhotoPreviewScreen({
           </p>
         )}
 
+        <input
+          value={caption}
+          onChange={(e) => onCaptionChange(e.target.value)}
+          placeholder="Add a caption (optional)"
+          className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-ivory placeholder:text-ivory/40 border border-white/10 text-sm"
+        />
+
         {!isVideo && (
-          <>
+          <button
+            type="button"
+            onClick={() => setShowExtras((v) => !v)}
+            className="flex items-center justify-center gap-2 w-full py-2 text-xs text-ivory/70"
+          >
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${showExtras ? "rotate-180" : ""}`}
+            />
+            {showExtras ? "Hide options" : "Filters, crop & save"}
+          </button>
+        )}
+
+        {!isVideo && showExtras && (
+          <div className="space-y-2 pb-1">
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
@@ -166,40 +189,19 @@ export function PhotoPreviewScreen({
             >
               <Crop className="w-4 h-4" /> Crop Photo
             </Button>
-          </>
+            <PhotoSaveActions
+              imageData={imageData}
+              filename={`${guest.firstName}-${guest.lastName}-POV.jpg`}
+              title={`${guest.firstName} ${guest.lastName}'s POV`}
+              variant="dark"
+              showShare={false}
+            />
+          </div>
         )}
+      </div>
 
-        <input
-          value={caption}
-          onChange={(e) => onCaptionChange(e.target.value)}
-          placeholder="Add a caption (optional)"
-          className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-ivory placeholder:text-ivory/40 border border-white/10 text-sm"
-        />
-
-        {!isVideo && (
-          <PhotoSaveActions
-            imageData={imageData}
-            filename={`${guest.firstName}-${guest.lastName}-POV.jpg`}
-            title={`${guest.firstName} ${guest.lastName}'s POV`}
-            variant="dark"
-            showShare={false}
-          />
-        )}
-
-        <div className="grid grid-cols-2 gap-2">
-          {settings.retakeBeforeUpload && (
-            <Button variant="ghost" className="text-ivory" onClick={onRetake}>
-              <RotateCcw className="w-4 h-4" /> Retake
-            </Button>
-          )}
-          {settings.deleteBeforeUpload && (
-            <Button variant="ghost" className="text-red-300" onClick={onDelete}>
-              <Trash2 className="w-4 h-4" /> Delete
-            </Button>
-          )}
-        </div>
-
-        <Button variant="gold" className="w-full" loading={uploading} onClick={onUpload}>
+      <div className="shrink-0 px-3 py-3 safe-bottom safe-x border-t border-white/10 bg-charcoal/95 space-y-2">
+        <Button variant="gold" className="w-full touch-target" loading={uploading} onClick={onUpload}>
           {replaceMode ? (
             <>
               <Check className="w-4 h-4" /> Confirm Replace
@@ -211,9 +213,18 @@ export function PhotoPreviewScreen({
           )}
         </Button>
 
-        <p className="text-[10px] text-center text-ivory/40">
-          Retake & delete before upload do not count toward your photo limit.
-        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {settings.retakeBeforeUpload && (
+            <Button variant="ghost" className="text-ivory touch-target" onClick={onRetake}>
+              <RotateCcw className="w-4 h-4" /> Retake
+            </Button>
+          )}
+          {settings.deleteBeforeUpload && (
+            <Button variant="ghost" className="text-red-300 touch-target" onClick={onDelete}>
+              <Trash2 className="w-4 h-4" /> Delete
+            </Button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

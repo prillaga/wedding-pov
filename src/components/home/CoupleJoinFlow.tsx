@@ -4,7 +4,7 @@ import { useState } from "react";
 import { HeroBannerRenderer } from "@/components/hero/HeroBannerRenderer";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { registerGuest, seedDemoEvent } from "@/lib/store";
+import { findGuestByName, registerGuest, seedDemoEvent } from "@/lib/store";
 import { DEMO_EVENT_ID } from "@/lib/constants";
 import { formatGuestPOV } from "@/lib/utils";
 import type { WeddingEvent } from "@/types";
@@ -73,7 +73,7 @@ export function CoupleJoinFlow({ event, startOnJoin = false }: CoupleJoinFlowPro
               Join {coupleLabel}
             </h2>
             <p className="text-warm-gray text-sm text-center mb-5">
-              Enter your name — no account needed
+              Enter your name — use the same name to continue your existing photos
             </p>
 
             <div className="space-y-3">
@@ -114,6 +114,12 @@ export function CoupleJoinFlow({ event, startOnJoin = false }: CoupleJoinFlowPro
                 )}
               </p>
             </div>
+
+            {firstName.trim() && lastName.trim() && findGuestByName(event.id, firstName, lastName) && (
+              <p className="text-xs text-center text-champagne mt-3">
+                Welcome back — we&apos;ll restore your existing guest profile.
+              </p>
+            )}
 
             <Button
               variant="gold"

@@ -375,6 +375,26 @@ export function getGuests(eventId?: string): Guest[] {
   return eventId ? guests.filter((g) => g.eventId === eventId) : guests;
 }
 
+function normalizeGuestName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+export function findGuestByName(
+  eventId: string,
+  firstName: string,
+  lastName: string
+): (Guest & { eventId?: string }) | undefined {
+  const id = normalizeEventId(eventId);
+  const fn = normalizeGuestName(firstName);
+  const ln = normalizeGuestName(lastName);
+  return read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).find(
+    (g) =>
+      g.eventId === id &&
+      normalizeGuestName(g.firstName) === fn &&
+      normalizeGuestName(g.lastName) === ln
+  );
+}
+
 export function registerGuest(
   eventId: string,
   data: Pick<Guest, "firstName" | "lastName" | "relationship">
@@ -385,14 +405,26 @@ export function registerGuest(
     throw new Error("This wedding is not accepting guests right now.");
   }
 
+  const trimmed = {
+    firstName: data.firstName.trim(),
+    lastName: data.lastName.trim(),
+    relationship: data.relationship,
+  };
+
+  const existing = findGuestByName(id, trimmed.firstName, trimmed.lastName);
+  if (existing) {
+    setSession({ eventId: id, guestId: existing.id });
+    return existing;
+  }
+
   const guest: Guest & { eventId: string } = {
     id: uuidv4(),
-    ...data,
+    ...trimmed,
     joinedAt: new Date().toISOString(),
     eventId: id,
   };
   write(GUESTS_KEY, [...read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []), guest]);
-  setSession({ eventId, guestId: guest.id });
+  setSession({ eventId: id, guestId: guest.id });
   return guest;
 }
 
