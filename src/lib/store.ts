@@ -13,6 +13,7 @@ import type {
   SlideshowConfig,
   ThemeSettings,
   ThemeSettingsPatch,
+  StorageDashboardStats,
   Upload,
   WeddingEvent,
 } from "@/types";
@@ -26,6 +27,7 @@ import {
   DEFAULT_SLIDESHOW,
   DEFAULT_THEME,
   DEMO_EVENT_ID,
+  STORAGE_PLAN_GB,
   THEME_PRESETS,
 } from "./constants";
 import { getGuestUploadQuota } from "./photo-limits";
@@ -69,6 +71,8 @@ function migrateEvent(raw: Partial<WeddingEvent> & { id: string }): WeddingEvent
     weddingDate: raw.weddingDate ?? settings.weddingDate,
     venue: raw.venue ?? settings.venue,
     createdAt: raw.createdAt ?? new Date().toISOString(),
+    status: raw.status ?? "active",
+    archivedAt: raw.archivedAt,
     pin: raw.pin,
     settings,
     photoLimits: raw.photoLimits ?? { ...DEFAULT_PHOTO_LIMITS },
@@ -563,6 +567,117 @@ export function seedSampleUploads(eventId: string): void {
   } catch {
     // Sample data is optional — don't block guest join
   }
+}
+
+export function getActiveEvents(): WeddingEvent[] {
+  return getEvents().filter((e) => e.status !== "archived");
+}
+
+export function getArchivedEvents(): WeddingEvent[] {
+  return getEvents().filter((e) => e.status === "archived");
+}
+
+export function archiveEvent(eventId: string): boolean {
+  const event = getEvent(eventId);
+  if (!event || event.status === "archived") return false;
+  saveEvent({ ...event, status: "archived", archivedAt: new Date().toISOString() });
+  return true;
+}
+
+export function restoreEvent(eventId: string): boolean {
+  const event = getEvent(eventId);
+  if (!event || event.status !== "archived") return false;
+  saveEvent({ ...event, status: "active", archivedAt: undefined });
+  return true;
+}
+
+export function clearEventGuestData(eventId: string): void {
+  write(
+    UPLOADS_KEY,
+    read<Upload[]>(UPLOADS_KEY, []).filter((u) => u.eventId !== eventId)
+  );
+  write(
+    GUESTS_KEY,
+    read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).filter((g) => g.eventId !== eventId)
+  );
+}
+
+export function deleteEventPermanently(eventId: string): boolean {
+  if (eventId === DEMO_EVENT_ID) return false;
+  clearEventGuestData(eventId);
+  write(
+    EVENTS_KEY,
+    getEvents().filter((e) => e.id !== eventId)
+  );
+  return true;
+}
+
+export function resetEventForNewWedding(
+  eventId: string,
+  settings?: Partial<EventSettings>
+): WeddingEvent | null {
+  const event = getEvent(eventId);
+  if (!event) return null;
+
+  clearEventGuestData(eventId);
+
+  const mergedSettings = settings ? { ...event.settings, ...settings } : event.settings;
+  const updated: WeddingEvent = {
+    ...event,
+    status: "active",
+    archivedAt: undefined,
+    settings: mergedSettings,
+    coupleName: `${mergedSettings.brideName} & ${mergedSettings.groomName}`,
+    weddingDate: mergedSettings.weddingDate,
+    venue: mergedSettings.venue,
+    createdAt: new Date().toISOString(),
+  };
+  saveEvent(updated);
+  return updated;
+}
+
+export function createNewWeddingEvent(
+  sourceEventId: string,
+  settings: Partial<EventSettings>
+): WeddingEvent | null {
+  const source = getEvent(sourceEventId);
+  if (!source) return null;
+
+  archiveEvent(sourceEventId);
+
+  const mergedSettings = { ...source.settings, ...settings };
+  const newEvent = migrateEvent({
+    ...source,
+    id: `wedding-${uuidv4().slice(0, 8)}`,
+    createdAt: new Date().toISOString(),
+    status: "active",
+    archivedAt: undefined,
+    settings: mergedSettings,
+    coupleName: `${mergedSettings.brideName} & ${mergedSettings.groomName}`,
+    weddingDate: mergedSettings.weddingDate,
+    venue: mergedSettings.venue,
+  });
+
+  write(EVENTS_KEY, [...getEvents(), newEvent]);
+  return newEvent;
+}
+
+export function getStorageDashboard(): StorageDashboardStats {
+  const events = getEvents();
+  const uploads = read<Upload[]>(UPLOADS_KEY, []);
+  const activeUploads = uploads.filter((u) => u.status !== "removed");
+  const storageBytes = activeUploads.reduce(
+    (sum, u) => sum + (u.imageData?.length ?? 0) * 0.75,
+    0
+  );
+
+  return {
+    totalPhotos: activeUploads.length,
+    storageUsedGB: Math.round((storageBytes / (1024 * 1024 * 1024)) * 10) / 10,
+    storageLimitGB: STORAGE_PLAN_GB,
+    activeEvents: events.filter((e) => e.status !== "archived").length,
+    archivedEvents: events.filter((e) => e.status === "archived").length,
+  };
 }
 
 export function ensureEvent(eventId: string): WeddingEvent | undefined {

@@ -183,12 +183,24 @@ export interface ModerationSettings {
   uploadsDisabled: boolean;
 }
 
+export type EventStatus = "active" | "archived";
+
+export interface StorageDashboardStats {
+  totalPhotos: number;
+  storageUsedGB: number;
+  storageLimitGB: number;
+  activeEvents: number;
+  archivedEvents: number;
+}
+
 export interface WeddingEvent {
   id: string;
   coupleName: string;
   weddingDate: string;
   venue: string;
   createdAt: string;
+  status?: EventStatus;
+  archivedAt?: string;
   pin?: string;
   settings: EventSettings;
   photoLimits: PhotoLimitSettings;

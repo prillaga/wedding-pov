@@ -14,6 +14,17 @@ import type {
 export const APP_NAME = "Wedding POV";
 export const TAGLINE = "See the Wedding Through Every Guest's Eyes.";
 
+export const STORAGE_PLAN_GB = 50;
+
+export const SEGMENT_DOWNLOAD_OPTIONS: { segment: EventSegment; label: string }[] = [
+  { segment: "ceremony", label: "Ceremony Photos" },
+  { segment: "cocktails", label: "Cocktails Photos" },
+  { segment: "reception", label: "Reception Photos" },
+  { segment: "first-dance", label: "First Dance Photos" },
+  { segment: "speeches", label: "Speeches Photos" },
+  { segment: "other", label: "Other Photos" },
+];
+
 export const SEGMENTS: { value: EventSegment; label: string }[] = [
   { value: "ceremony", label: "Ceremony" },
   { value: "cocktails", label: "Cocktails" },

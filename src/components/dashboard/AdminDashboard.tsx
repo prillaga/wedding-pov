@@ -22,6 +22,7 @@ import {
   Bookmark,
   Check,
   Film,
+  FolderArchive,
   Palette,
   Settings,
   Shield,
@@ -29,6 +30,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
+import { EventArchiveManager } from "./EventArchiveManager";
 import { PhotoLimitManager } from "./PhotoLimitManager";
 import { SlideshowSettingsPanel } from "./SlideshowSettingsPanel";
 import { TemplateManager } from "./TemplateManager";
@@ -42,6 +44,7 @@ type AdminTab =
   | "slideshow"
   | "templates"
   | "moderation"
+  | "archive"
   | "highlights";
 
 interface AdminDashboardProps {
@@ -74,6 +77,7 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
     { id: "slideshow", label: "Slideshow", icon: <Film className="w-4 h-4" /> },
     { id: "templates", label: "Templates", icon: <Bookmark className="w-4 h-4" /> },
     { id: "moderation", label: "Moderation", icon: <Shield className="w-4 h-4" /> },
+    { id: "archive", label: "Archive", icon: <FolderArchive className="w-4 h-4" /> },
     { id: "highlights", label: "AI Reels", icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -201,6 +205,15 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
             ))}
           </div>
         </div>
+      )}
+
+      {tab === "archive" && (
+        <EventArchiveManager
+          eventId={eventId}
+          event={event}
+          stats={stats}
+          onRefresh={refresh}
+        />
       )}
 
       {tab === "highlights" && <HighlightsReel uploads={getApprovedUploads(eventId)} />}

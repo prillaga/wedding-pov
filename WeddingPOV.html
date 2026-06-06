@@ -596,6 +596,7 @@
         <button class="admin-tab active" data-tab="theme" onclick="setAdminTab('theme')">Theme</button>
         <button class="admin-tab" data-tab="limits" onclick="setAdminTab('limits')">Photo Limits</button>
         <button class="admin-tab" data-tab="event" onclick="setAdminTab('event')">Event</button>
+        <button class="admin-tab" data-tab="archive" onclick="setAdminTab('archive')">Archive</button>
         <button class="admin-tab" data-tab="preview" onclick="setAdminTab('preview')">Preview</button>
       </div>
 
@@ -653,6 +654,23 @@
         <label>Welcome Message</label><input id="welcomeMsg" onchange="saveAdmin()" />
       </div>
 
+      <div id="admin-archive" class="admin-section">
+        <p style="font-size:0.8rem;font-weight:500;margin-bottom:0.5rem">Storage Dashboard</p>
+        <div style="padding:0.75rem;border-radius:0.75rem;background:#f5e6e0;font-size:0.75rem;margin-bottom:1rem" id="archiveStorageStats">
+          Storage Used: 0 MB / 50 GB<br>Photos: 0<br>Status: Active
+        </div>
+        <p style="font-size:0.8rem;font-weight:500;margin-bottom:0.5rem">Download Options</p>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem">
+          <button type="button" class="btn" style="width:100%;font-size:0.8rem" onclick="downloadAllPhotosZip()">Download All Photos (.zip)</button>
+          <button type="button" class="btn-secondary" style="width:100%;border-radius:999px;padding:0.65rem;font-size:0.8rem" onclick="downloadEventBackupJson()">Download Event Backup (.json)</button>
+          <button type="button" class="btn-secondary" style="width:100%;border-radius:999px;padding:0.65rem;font-size:0.8rem" onclick="downloadGuestCsv()">Download CSV Guest List</button>
+        </div>
+        <p style="font-size:0.8rem;font-weight:500;margin-bottom:0.5rem">Archive & Reset</p>
+        <button type="button" class="btn-secondary" style="width:100%;border-radius:999px;padding:0.65rem;font-size:0.8rem;margin-bottom:0.5rem" onclick="archiveCurrentEvent()">Archive Event</button>
+        <button type="button" class="btn" style="width:100%;font-size:0.8rem;margin-bottom:0.5rem" onclick="resetForNewWedding()">Create New Wedding</button>
+        <button type="button" class="btn-secondary btn-danger" style="width:100%;border-radius:999px;padding:0.65rem;font-size:0.8rem" onclick="confirmClearEvent()">Clear All Event Data</button>
+      </div>
+
       <div id="admin-preview" class="admin-section">
         <div class="preview-phone">
           <div class="preview-inner" id="livePreview">
@@ -667,6 +685,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
     function possessive(name) {
       name = (name || '').trim();
@@ -716,7 +735,8 @@
         hashtag: '#JohnAndJane2027', venue: 'The Garden Pavilion',
         welcomeMsg: 'Welcome! Capture your favorite moments.',
         restoreSlot: true,
-        afterUpload: 'stay-in-camera'
+        afterUpload: 'stay-in-camera',
+        eventArchived: false
       };
     }
 
@@ -826,6 +846,82 @@
       document.querySelectorAll('.admin-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
       document.querySelectorAll('.admin-section').forEach(function(s) { s.classList.remove('active'); });
       document.getElementById('admin-' + tab).classList.add('active');
+      if (tab === 'archive') updateArchiveStorageStats();
+    }
+
+    function updateArchiveStorageStats() {
+      var cfg = mergeAdmin();
+      var bytes = myUploads.reduce(function(sum, u) { return sum + (u.data ? u.data.length : 0); }, 0);
+      var mb = (bytes * 0.75 / (1024 * 1024)).toFixed(1);
+      var el = document.getElementById('archiveStorageStats');
+      if (!el) return;
+      el.innerHTML = 'Storage Used: ' + mb + ' MB / 50 GB<br>Photos: ' + myUploads.length +
+        '<br>Status: ' + (cfg.eventArchived ? 'Archived' : 'Active');
+    }
+
+    function downloadBlob(blob, name) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadAllPhotosZip() {
+      if (!myUploads.length) { alert('No photos to download yet.'); return; }
+      if (typeof JSZip === 'undefined') { alert('ZIP library loading… try again.'); return; }
+      var zip = new JSZip();
+      myUploads.forEach(function(u, i) {
+        var parts = u.data.split(',');
+        if (parts[1]) zip.file('photo-' + (i + 1) + '.jpg', parts[1], { base64: true });
+      });
+      zip.generateAsync({ type: 'blob' }).then(function(blob) {
+        downloadBlob(blob, 'wedding-photos.zip');
+      });
+    }
+
+    function downloadEventBackupJson() {
+      var cfg = mergeAdmin();
+      var backup = {
+        exportedAt: new Date().toISOString(),
+        event: cfg,
+        guestName: guestName,
+        photos: myUploads,
+        photosUsed: photosUsed
+      };
+      downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }), 'wedding-backup.json');
+    }
+
+    function downloadGuestCsv() {
+      var header = 'Guest,Photos Uploaded';
+      var row = '"' + (guestName || 'Guest').replace(/"/g, '""') + '",' + myUploads.length;
+      downloadBlob(new Blob([[header, row].join('\n')], { type: 'text/csv' }), 'guest-list.csv');
+    }
+
+    function archiveCurrentEvent() {
+      adminConfig.eventArchived = true;
+      saveAdmin();
+      updateArchiveStorageStats();
+      alert('Event archived. Data remains downloadable.');
+    }
+
+    function resetForNewWedding() {
+      if (!confirm('Download a backup first if needed. Clear all photos and reset for a new wedding?')) return;
+      myUploads = [];
+      photosUsed = 0;
+      slotLocked = 0;
+      guestName = '';
+      adminConfig.eventArchived = false;
+      saveAdmin();
+      updateQuotaDisplay();
+      renderMyUploads();
+      updateArchiveStorageStats();
+      alert('Ready for a new wedding. Gallery cleared.');
+    }
+
+    function confirmClearEvent() {
+      if (!confirm('⚠️ This will permanently remove all photos and guest data.\n\nHave you downloaded a backup?')) return;
+      if (!confirm('Final confirmation: delete all event data?')) return;
+      resetForNewWedding();
     }
 
     document.getElementById('adminLink').addEventListener('click', function() {

@@ -62,6 +62,7 @@ Double-click **`WeddingPOV.html`** in Safari or Chrome for the full guest flow i
 
 ### Admin Dashboard
 - **Analytics** — guests, photos, avg per guest, storage, top contributors
+- **Archive & Download** — ZIP photos, full backup, CSV guest list, PDF summary, archive/restore, create new wedding
 - **Event Settings** — bride/groom, date, venue, hashtag, welcome message
 - **Photo Limits** — type, max count, limit behavior
 - **Theme Builder** — 6 presets, custom colors, typography, background upload
