@@ -39,6 +39,7 @@ import {
 import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "./demo-event";
 import { readBootstrapFromLocation, readEventFromSession } from "./event-bootstrap";
 import { fetchRemoteEvent, pushRemoteEvent } from "./event-remote";
+import { patchRemotePhoto, pushRemotePhoto } from "./photo-remote";
 import { getPublicEvent } from "./public-events";
 import { getGuestUploadQuota } from "./photo-limits";
 import {
@@ -697,14 +698,22 @@ export async function addUpload(
     return null;
   }
 
+  void pushRemotePhoto(upload).catch((err) => {
+    console.warn("[WeddingPOV] Cloud photo sync failed:", err);
+  });
+
   return upload;
 }
 
 export function updateUploadStatus(uploadId: string, status: Upload["status"]): void {
   const records = readPersistedUploads();
+  const upload = records.find((u) => u.id === uploadId);
   writePersistedUploads(
     records.map((u) => (u.id === uploadId ? { ...u, status } : u))
   );
+  if (upload) {
+    void patchRemotePhoto(upload.eventId, uploadId, { status });
+  }
 }
 
 export function deleteUpload(uploadId: string): void {
@@ -732,6 +741,8 @@ export function deleteGuestUpload(
     uploadMediaCache.delete(uploadId);
     void deleteUploadMedia(uploadId);
   }
+
+  void patchRemotePhoto(upload.eventId, uploadId, { status: "removed", guestId });
 
   return true;
 }
@@ -761,7 +772,7 @@ export async function replaceUpload(
   uploadMediaCache.set(uploadId, imageData);
 
   const compacted = await compactPersistedUploads(records);
-  return writePersistedUploads(
+  const saved = writePersistedUploads(
     compacted.map((u) =>
       u.id === uploadId
         ? {
@@ -774,6 +785,18 @@ export async function replaceUpload(
         : u
     )
   );
+
+  if (saved) {
+    const updated: Upload = {
+      ...upload,
+      ...data,
+      imageData,
+      isVideo: data.isVideo ?? upload.isVideo,
+    };
+    void pushRemotePhoto(updated);
+  }
+
+  return saved;
 }
 
 export function approveAllPending(eventId: string): void {

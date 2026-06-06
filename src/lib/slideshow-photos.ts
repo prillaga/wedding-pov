@@ -1,5 +1,10 @@
 import { ensureUploadsHydrated, getApprovedUploads } from "@/lib/store";
 import { fetchPhotosFromFirebase, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  fetchRemotePhotos,
+  mergeEventPhotos,
+  syncLocalPhotosToCloud,
+} from "@/lib/photo-remote";
 import type { Upload } from "@/types";
 
 const DEBUG = process.env.NODE_ENV === "development";
@@ -34,23 +39,33 @@ export function getSlideshowPhotos(eventId: string): Upload[] {
 
 export async function fetchSlideshowPhotos(eventId: string): Promise<Upload[]> {
   await ensureUploadsHydrated();
+  const local = getSlideshowPhotos(eventId);
 
   if (isFirebaseConfigured()) {
     try {
       const remote = await fetchPhotosFromFirebase(eventId);
       if (remote && remote.length >= 0) {
-        const photos = filterSlideshowPhotos(remote);
-        slideshowLog(`Loaded ${photos.length} slideshow photo(s) from Firebase`, {
-          eventId,
-        });
+        const photos = filterSlideshowPhotos(mergeEventPhotos(local, remote));
+        slideshowLog(`Loaded ${photos.length} slideshow photo(s) from Firebase`, { eventId });
         return photos;
       }
     } catch (err) {
-      slideshowLog("Firebase fetch failed — using local store", err);
+      slideshowLog("Firebase fetch failed — trying cloud API", err);
     }
   }
 
-  return getSlideshowPhotos(eventId);
+  const remote = await fetchRemotePhotos(eventId);
+  if (remote) {
+    const merged = filterSlideshowPhotos(mergeEventPhotos(local, remote));
+    slideshowLog(`Loaded ${merged.length} slideshow photo(s) (${remote.length} from cloud)`, {
+      eventId,
+    });
+    void syncLocalPhotosToCloud(eventId, local);
+    return merged;
+  }
+
+  void syncLocalPhotosToCloud(eventId, local);
+  return local;
 }
 
 /** Clamp index when photo list shrinks or IDs change (delete/replace) */
