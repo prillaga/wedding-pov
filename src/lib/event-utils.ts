@@ -1,4 +1,7 @@
 import type { EventSettings, EventStatus, WeddingEvent } from "@/types";
+import { getEventJoinUrl } from "./app-url";
+
+export { getEventJoinUrl } from "./app-url";
 
 export function slugifyName(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -8,12 +11,18 @@ export function parseEventCodeInput(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return "";
 
+  const compactMatch = trimmed.match(/^wedding-pov:(.+)$/i);
+  if (compactMatch?.[1]) return decodeURIComponent(compactMatch[1].trim());
+
   try {
     const url = trimmed.startsWith("http") ? new URL(trimmed) : new URL(trimmed, "https://weddingpov.local");
     const parts = url.pathname.split("/").filter(Boolean);
-    for (const key of ["wedding", "join", "event", "dashboard"]) {
+    for (const key of ["wedding", "join", "event"]) {
       const idx = parts.indexOf(key);
       if (idx >= 0 && parts[idx + 1]) return decodeURIComponent(parts[idx + 1]);
+    }
+    if (parts.length === 1 && !parts[0].includes(".")) {
+      return decodeURIComponent(parts[0]);
     }
   } catch {
     // Not a URL — treat as raw event id
@@ -52,11 +61,6 @@ export function generateDefaultHashtag(
   const bride = settings.brideName.replace(/\s+/g, "");
   const year = settings.weddingDate.slice(0, 4);
   return `#${groom}And${bride}${year}`;
-}
-
-export function getEventJoinUrl(eventId: string, origin?: string): string {
-  const base = origin ?? (typeof window !== "undefined" ? window.location.origin : "");
-  return `${base}/wedding/${eventId}`;
 }
 
 export function getEventStatusLabel(status: EventStatus | undefined): string {

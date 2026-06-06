@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/Button";
+import { getAppOrigin } from "@/lib/app-url";
 import { getEventJoinUrl, getEventShortCode } from "@/lib/event-utils";
 import { getEvent } from "@/lib/store";
 import { Copy, Download, Link2, Printer, Share2 } from "lucide-react";
@@ -15,7 +16,7 @@ interface EventQRCodeProps {
   compact?: boolean;
 }
 
-async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
+async function svgToPngBlob(svg: SVGSVGElement, pixelSize: number): Promise<Blob | null> {
   const svgData = new XMLSerializer().serializeToString(svg);
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(svgBlob);
@@ -24,8 +25,8 @@ async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = pixelSize;
+      canvas.height = pixelSize;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         URL.revokeObjectURL(url);
@@ -33,8 +34,8 @@ async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
         return;
       }
       ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
+      ctx.fillRect(0, 0, pixelSize, pixelSize);
+      ctx.drawImage(img, 0, 0, pixelSize, pixelSize);
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => resolve(blob), "image/png");
     };
@@ -58,7 +59,7 @@ function triggerDownload(blob: Blob, filename: string) {
 export function EventQRCode({
   eventId,
   coupleName,
-  size = 200,
+  size = 240,
   showActions = true,
   compact = false,
 }: EventQRCodeProps) {
@@ -68,6 +69,9 @@ export function EventQRCode({
   const event = getEvent(eventId);
   const shortCode = event ? getEventShortCode(event.settings) : eventId.slice(0, 6).toUpperCase();
   const displayLink = joinUrl.replace(/^https?:\/\//, "");
+  const onLocalDev =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
   const getSvg = useCallback(() => {
     const svg = svgRef.current?.querySelector("svg");
@@ -77,14 +81,14 @@ export function EventQRCode({
   const handleDownload = async () => {
     const svg = getSvg();
     if (!svg) return;
-    const blob = await svgToPngBlob(svg);
+    const blob = await svgToPngBlob(svg, 512);
     if (blob) triggerDownload(blob, `${eventId}-qr-code.png`);
   };
 
   const handlePrint = async () => {
     const svg = getSvg();
     if (!svg) return;
-    const blob = await svgToPngBlob(svg);
+    const blob = await svgToPngBlob(svg, 512);
     if (!blob) return;
     const imgUrl = URL.createObjectURL(blob);
     const printWindow = window.open("", "_blank");
@@ -95,8 +99,8 @@ export function EventQRCode({
       <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:Georgia,serif;text-align:center;padding:2rem">
         <h1 style="font-size:1.5rem;margin-bottom:0.5rem">${coupleName}</h1>
         <p style="color:#666;margin-bottom:1.5rem">Scan to join the wedding</p>
-        <img src="${imgUrl}" alt="QR Code" style="width:280px;height:280px" />
-        <p style="margin-top:1.5rem;font-size:0.9rem;color:#888">${displayLink}</p>
+        <img src="${imgUrl}" alt="QR Code" style="width:320px;height:320px" />
+        <p style="margin-top:1.5rem;font-size:0.9rem;color:#888;word-break:break-all">${joinUrl}</p>
       </body></html>
     `);
     printWindow.document.close();
@@ -132,21 +136,23 @@ export function EventQRCode({
         <QRCodeSVG
           value={joinUrl}
           size={size}
-          level="H"
-          fgColor="#2C2C2C"
+          level="M"
+          marginSize={2}
+          fgColor="#000000"
           bgColor="#FFFFFF"
-          imageSettings={{
-            src: "/icon.svg",
-            height: 40,
-            width: 40,
-            excavate: true,
-          }}
         />
       </div>
 
       <div className="text-center w-full">
         <p className="font-serif text-lg text-charcoal">{coupleName}</p>
         <p className="text-xs text-warm-gray mt-1">Scan to join the wedding</p>
+
+        {onLocalDev && (
+          <p className="text-xs text-amber-700 mt-2 px-3 py-2 rounded-lg bg-amber-50">
+            QR links to <strong>{getAppOrigin().replace(/^https?:\/\//, "")}</strong> so guests&apos; phones
+            can open it (not localhost).
+          </p>
+        )}
 
         {!compact && (
           <div className="mt-4 space-y-2 text-left rounded-xl bg-blush/30 p-3 text-sm">

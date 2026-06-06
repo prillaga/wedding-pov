@@ -15,6 +15,8 @@ import type {
 
 export const APP_NAME = "Wedding POV";
 export const TAGLINE = "See the Wedding Through Every Guest's Eyes.";
+/** Production URL used in QR codes when admin is on localhost. Override with NEXT_PUBLIC_APP_URL. */
+export const PRODUCTION_APP_URL = "https://wedding-pov-two.vercel.app";
 
 /** Client-side admin gate (deterrent for guest-facing demo; not server auth). */
 export const ADMIN_PASSWORD = "prillaga321";
