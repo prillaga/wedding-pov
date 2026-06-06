@@ -45,17 +45,12 @@ export default function CustomWeddingGuestPage({
         <div>
           <p className="font-serif text-xl mb-2">Event not found</p>
           <p className="text-sm text-warm-gray mb-4">
-            Ask your wedding coordinator for the correct QR code, join link, or portable code
-            (starts with <span className="font-mono">wedding-pov:</span>).
+            Scan the QR code on your wedding invitation to join. If you already scanned, ask your
+            wedding host to sync the event from the Admin Dashboard.
           </p>
           <Link href="/" className="text-champagne underline">
-            Scan QR code
+            Scan invitation QR
           </Link>
-          <p className="mt-4 text-sm">
-            <Link href="/WeddingPOV.html" className="text-champagne underline">
-              Open offline demo
-            </Link>
-          </p>
         </div>
       </main>
     );

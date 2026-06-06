@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { EventQRCode } from "@/components/qr/EventQRCode";
 import { PHOTO_LIMIT_OPTIONS, THEME_PRESETS } from "@/lib/constants";
-import { generateDefaultHashtag } from "@/lib/event-utils";
+import { generateDefaultHashtag, getEventJoinUrl, getEventShortCode } from "@/lib/event-utils";
 import { pushRemoteEvent } from "@/lib/event-remote";
 import { createWeddingEvent } from "@/lib/store";
 import type { PhotoLimitValue, ThemePreset } from "@/types";
@@ -75,21 +75,39 @@ export function CreateWeddingEventForm() {
   };
 
   if (createdEvent) {
+    const joinUrl = getEventJoinUrl(createdEvent.id);
+    const displayLink = joinUrl.replace(/^https?:\/\//, "");
+    const shortCode = getEventShortCode(createdEvent.settings);
+
     return (
       <div className="space-y-6">
         <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-center">
           <Sparkles className="w-8 h-8 text-green-600 mx-auto mb-2" />
           <h2 className="font-serif text-xl font-semibold text-green-900">Event Created!</h2>
           <p className="text-sm text-green-800 mt-1">
-            Your wedding is ready. Share the QR code with guests — they scan, join, and start taking
-            photos immediately. Re-download the QR after any changes so every guest phone can find
-            the event.
+            Your QR code and guest link are ready. Share the QR on invitations — guests scan, enter
+            their name, and go straight to the camera.
           </p>
           {syncWarning && (
             <p className="text-sm text-amber-800 mt-3 px-3 py-2 rounded-lg bg-amber-100 text-left">
               {syncWarning}
             </p>
           )}
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3 text-sm">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-warm-gray">Event ID</p>
+            <p className="font-mono font-medium text-champagne">{createdEvent.id}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-warm-gray">Join Code</p>
+            <p className="font-mono font-medium text-charcoal">{shortCode}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-warm-gray">Event Link</p>
+            <p className="font-mono text-xs break-all text-charcoal">{displayLink}</p>
+          </div>
         </div>
 
         <div className="p-6 rounded-2xl bg-white wedding-shadow border border-champagne/10">

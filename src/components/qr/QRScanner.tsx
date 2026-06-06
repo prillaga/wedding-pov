@@ -8,7 +8,6 @@ import { Camera, X } from "lucide-react";
 interface QRScannerProps {
   onScan: (raw: string) => void;
   onClose?: () => void;
-  onManualEntry?: (code: string) => void;
 }
 
 type ScannerInstance = {
@@ -76,12 +75,10 @@ async function startBestCamera(
   await scanner.start(backCamera.id, config, onSuccess, onFailure);
 }
 
-export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
+export function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [scanHint, setScanHint] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
-  const [manualCode, setManualCode] = useState("");
   const scannerRef = useRef<ScannerInstance | null>(null);
   const onScanRef = useRef(onScan);
   const containerId = "qr-reader";
@@ -96,8 +93,6 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
   }, []);
 
   useEffect(() => {
-    if (manualMode) return;
-
     let mounted = true;
 
     async function startScanner() {
@@ -113,7 +108,7 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
         await startBestCamera(Html5Qrcode, scanner, (decoded) => {
           const eventId = extractEventId(decoded);
           if (!eventId) {
-            setScanHint("QR not recognized — use your invitation link or event code.");
+            setScanHint("That QR code is not a wedding invitation. Ask your host for the printed QR.");
             return;
           }
           setScanHint(null);
@@ -136,8 +131,9 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
         if (mounted) {
           scannerRef.current = null;
           setScanning(false);
-          setError("Camera unavailable on this device. Enter your event code below.");
-          setManualMode(true);
+          setError(
+            "Camera access is unavailable here. Open your phone's Camera app and scan the printed invitation QR code instead."
+          );
         }
       }
     }
@@ -148,27 +144,10 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
       mounted = false;
       void stopScanner();
     };
-  }, [manualMode, stopScanner]);
-
-  const openManualMode = () => {
-    setScanHint(null);
-    void stopScanner().then(() => setManualMode(true));
-  };
+  }, [stopScanner]);
 
   const closeScanner = () => {
     void stopScanner().then(() => onClose?.());
-  };
-
-  const submitManual = () => {
-    const eventId = extractEventId(manualCode);
-    if (!eventId) {
-      setScanHint("Enter a valid event code or paste your invitation link.");
-      return;
-    }
-    void stopScanner().then(() => {
-      if (onManualEntry) onManualEntry(manualCode);
-      else onScan(manualCode);
-    });
   };
 
   return (
@@ -176,15 +155,14 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
       <div className="flex items-center justify-between p-3 sm:p-4 shrink-0">
         <div className="flex items-center gap-2 text-ivory min-w-0">
           <Camera className="w-5 h-5 text-champagne shrink-0" />
-          <span className="font-medium text-sm sm:text-base truncate">
-            {manualMode ? "Enter Event Code" : "Scan Invitation QR"}
-          </span>
+          <span className="font-medium text-sm sm:text-base truncate">Scan Invitation QR</span>
         </div>
         {onClose && (
           <button
             type="button"
             onClick={closeScanner}
             className="p-2 rounded-full bg-white/10 text-ivory hover:bg-white/20"
+            aria-label="Close scanner"
           >
             <X className="w-5 h-5" />
           </button>
@@ -192,56 +170,23 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 min-h-0 overflow-y-auto touch-scroll-y pb-4">
-        {manualMode ? (
-          <div className="w-full max-w-sm space-y-4">
-            {error && <p className="text-ivory/70 text-sm text-center">{error}</p>}
-            {scanHint && <p className="text-amber-200 text-sm text-center">{scanHint}</p>}
-            <input
-              value={manualCode}
-              onChange={(e) => {
-                setManualCode(e.target.value);
-                setScanHint(null);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && submitManual()}
-              placeholder="Event code or invitation link"
-              autoFocus
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="w-full px-4 py-3 rounded-full border border-white/20 bg-white/10 text-ivory text-sm placeholder:text-ivory/40 focus:outline-none focus:ring-2 focus:ring-champagne/50"
-            />
-            <Button variant="gold" className="w-full" onClick={submitManual} disabled={!manualCode.trim()}>
-              Continue
+        {error ? (
+          <div className="w-full max-w-sm space-y-4 text-center">
+            <p className="text-ivory/80 text-sm leading-relaxed">{error}</p>
+            <Button variant="gold" className="w-full" onClick={closeScanner}>
+              Close
             </Button>
-            {!error && (
-              <button
-                type="button"
-                onClick={() => {
-                  setManualMode(false);
-                  setScanHint(null);
-                }}
-                className="w-full text-sm text-ivory/60 hover:text-ivory"
-              >
-                ← Back to QR scanner
-              </button>
-            )}
           </div>
         ) : (
           <>
             <div id={containerId} className="w-full max-w-sm rounded-2xl overflow-hidden min-h-[260px]" />
             {scanning && (
-              <p className="text-ivory/60 text-sm mt-6 text-center px-4">
-                Point your camera at the QR code. You can also scan with your phone&apos;s Camera app.
+              <p className="text-ivory/60 text-sm mt-6 text-center px-4 leading-relaxed">
+                Point at the QR code on your invitation. You can also scan it with your phone&apos;s
+                Camera app.
               </p>
             )}
             {scanHint && <p className="text-amber-200 text-sm mt-4 text-center px-4">{scanHint}</p>}
-            <button
-              type="button"
-              onClick={openManualMode}
-              className="mt-6 text-sm text-champagne hover:underline"
-            >
-              Enter code manually
-            </button>
           </>
         )}
       </div>

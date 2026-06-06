@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
+import { APP_NAME, TAGLINE } from "@/lib/constants";
 import { cacheEventInSession, extractCfgParam, buildJoinPath } from "@/lib/event-bootstrap";
 import { resolveEventInput } from "@/lib/event-utils";
-import { Camera, Heart, QrCode, Settings } from "lucide-react";
+import { Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -16,16 +16,11 @@ const QRScanner = dynamic(() => import("@/components/qr/QRScanner"), { ssr: fals
 export default function HomePage() {
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
-  const [eventCode, setEventCode] = useState("");
-  const [manualError, setManualError] = useState("");
 
-  const goToEvent = (raw: string) => {
+  const handleScan = (raw: string) => {
     const { eventId, embeddedEvent } = resolveEventInput(raw);
-    if (!eventId) {
-      setManualError("Enter an event code or paste your invitation link.");
-      return;
-    }
-    setManualError("");
+    if (!eventId) return;
+
     setShowScanner(false);
 
     if (embeddedEvent) {
@@ -36,10 +31,6 @@ export default function HomePage() {
 
     const cfg = extractCfgParam(raw);
     router.push(buildJoinPath(eventId, cfg ?? undefined));
-  };
-
-  const handleScan = (raw: string) => {
-    goToEvent(raw);
   };
 
   return (
@@ -63,26 +54,9 @@ export default function HomePage() {
             {APP_NAME}
           </h1>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="relative z-10 grid grid-cols-2 gap-4 mt-10 max-w-xs w-full"
-        >
-          {[
-            { icon: <QrCode className="w-5 h-5" />, label: "Scan QR" },
-            { icon: <Camera className="w-5 h-5" />, label: "Take Photos" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/70 border border-white/40 wedding-shadow"
-            >
-              <span className="text-champagne">{item.icon}</span>
-              <span className="text-xs text-warm-gray font-medium">{item.label}</span>
-            </div>
-          ))}
+          <p className="text-sm text-warm-gray/90 mt-4 leading-relaxed">
+            Scan the QR code on your wedding invitation to join and start taking photos.
+          </p>
         </motion.div>
       </section>
 
@@ -90,7 +64,7 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.4 }}
           className="max-w-md mx-auto space-y-4"
         >
           <Button variant="gold" size="lg" className="w-full" onClick={() => setShowScanner(true)}>
@@ -98,38 +72,8 @@ export default function HomePage() {
             Scan Invitation QR Code
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-champagne/20" />
-            <span className="text-xs text-warm-gray">or</span>
-            <div className="flex-1 h-px bg-champagne/20" />
-          </div>
-
-          <div className="space-y-2">
-            <input
-              value={eventCode}
-              onChange={(e) => {
-                setEventCode(e.target.value);
-                setManualError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && goToEvent(eventCode)}
-              placeholder="Event code, portable code, or invitation link"
-              className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
-            />
-            {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
-            <Button variant="secondary" className="w-full" onClick={() => goToEvent(eventCode)}>
-              Join with Code
-            </Button>
-          </div>
-
-          <p className="text-center text-xs text-warm-gray">
-            Demo code:{" "}
-            <button
-              type="button"
-              onClick={() => goToEvent(DEMO_EVENT_ID)}
-              className="text-champagne hover:underline"
-            >
-              {DEMO_EVENT_ID}
-            </button>
+          <p className="text-center text-xs text-warm-gray px-2">
+            No account or setup needed — scan, enter your name, and the camera opens.
           </p>
 
           <Link
@@ -142,16 +86,7 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {showScanner && (
-        <QRScanner
-          onScan={handleScan}
-          onClose={() => setShowScanner(false)}
-          onManualEntry={(code) => {
-            setEventCode(code);
-            goToEvent(code);
-          }}
-        />
-      )}
+      {showScanner && <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
     </main>
   );
 }

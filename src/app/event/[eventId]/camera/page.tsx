@@ -17,7 +17,7 @@ function CameraContent() {
   useEffect(() => {
     const session = getSession();
     if (!session || session.eventId !== eventId) {
-      router.push(`/join/${eventId}`);
+      router.push(`/wedding/${eventId}`);
       return;
     }
     const g = getGuest(session.guestId);

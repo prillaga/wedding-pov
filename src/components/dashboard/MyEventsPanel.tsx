@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { EventQRCode } from "@/components/qr/EventQRCode";
-import { getEventJoinUrl, getEventStatusLabel } from "@/lib/event-utils";
+import { getEventJoinUrl, getEventShortCode, getEventStatusLabel } from "@/lib/event-utils";
 import {
   archiveEvent,
   getEventStats,
@@ -17,7 +17,7 @@ import { Archive, Download, Edit, QrCode, Users } from "lucide-react";
 
 export function MyEventsPanel() {
   const router = useRouter();
-  const [qrEventId, setQrEventId] = useState<string | null>(null);
+  const [qrModal, setQrModal] = useState<{ eventId: string; autoDownload?: boolean } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const events = useMemo(() => getManageableEvents(), [refreshKey]);
 
@@ -29,7 +29,7 @@ export function MyEventsPanel() {
         <div>
           <h2 className="font-serif text-xl font-semibold">My Events</h2>
           <p className="text-sm text-warm-gray mt-0.5">
-            Manage wedding events, QR codes, and guest access.
+            Create once — QR code and guest link are generated automatically.
           </p>
         </div>
         <Link href="/dashboard/create">
@@ -39,22 +39,27 @@ export function MyEventsPanel() {
         </Link>
       </div>
 
-      {qrEventId && (
+      {qrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl relative">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl relative max-h-[92dvh] overflow-y-auto">
             <button
               type="button"
-              onClick={() => setQrEventId(null)}
+              onClick={() => setQrModal(null)}
               className="absolute top-3 right-3 text-warm-gray hover:text-charcoal text-xl"
               aria-label="Close"
             >
               ×
             </button>
             {(() => {
-              const event = events.find((e) => e.id === qrEventId);
+              const event = events.find((e) => e.id === qrModal.eventId);
               if (!event) return null;
               return (
-                <EventQRCode eventId={event.id} coupleName={event.coupleName} size={220} />
+                <EventQRCode
+                  eventId={event.id}
+                  coupleName={event.coupleName}
+                  size={220}
+                  autoDownload={qrModal.autoDownload}
+                />
               );
             })()}
           </div>
@@ -77,39 +82,43 @@ export function MyEventsPanel() {
           {activeEvents.map((event) => {
             const stats = getEventStats(event.id);
             const photos = getUploads(event.id).filter((u) => u.status !== "removed");
+            const displayLink = getEventJoinUrl(event.id).replace(/^https?:\/\//, "");
+            const shortCode = getEventShortCode(event.settings);
+
             return (
               <div
                 key={event.id}
                 className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div>
-                    <p className="font-serif text-lg font-semibold">{event.coupleName}</p>
-                    <p className="text-sm text-warm-gray">{formatDate(event.weddingDate)}</p>
-                    <p className="text-xs text-champagne mt-1">
-                      Status: {getEventStatusLabel(event.status)}
-                    </p>
-                    <div className="flex gap-4 mt-2 text-xs text-warm-gray">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {stats.totalGuests} guests
-                      </span>
-                      <span>{photos.length} photos</span>
-                    </div>
-                    <p className="text-[10px] font-mono text-warm-gray mt-1 truncate max-w-xs">
-                      {getEventJoinUrl(event.id).replace(/^https?:\/\//, "")}
-                    </p>
+                <div>
+                  <p className="font-serif text-lg font-semibold">{event.coupleName}</p>
+                  <p className="text-sm text-warm-gray">{formatDate(event.weddingDate)}</p>
+                  <p className="text-xs text-champagne mt-1">
+                    Status: {getEventStatusLabel(event.status)}
+                  </p>
+                  <div className="flex flex-wrap gap-4 mt-2 text-xs text-warm-gray">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {stats.totalGuests} guests
+                    </span>
+                    <span>{photos.length} photos</span>
                   </div>
+                  <p className="text-[10px] font-mono text-warm-gray mt-2">
+                    ID: {event.id} · Code: {shortCode}
+                  </p>
+                  <p className="text-[10px] font-mono text-warm-gray truncate">{displayLink}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => setQrEventId(event.id)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setQrModal({ eventId: event.id })}
+                  >
                     <QrCode className="w-4 h-4" /> View QR
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setQrEventId(event.id);
-                    }}
+                    onClick={() => setQrModal({ eventId: event.id, autoDownload: true })}
                   >
                     <Download className="w-4 h-4" /> Download QR
                   </Button>
