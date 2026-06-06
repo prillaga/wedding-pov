@@ -1,23 +1,30 @@
 "use client";
 
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PresentationSlideshow } from "@/components/slideshow/PresentationSlideshow";
 import { useEventPhotos } from "@/hooks/useEventPhotos";
-import { getEvent, seedDemoEvent, seedSampleUploads } from "@/lib/store";
+import { loadEventForGuest, seedSampleUploads } from "@/lib/store";
+import type { WeddingEvent } from "@/types";
 
 export default function DisplayModePage() {
   const params = useParams();
   const eventId = params.eventId as string;
   const { photos, loading, refresh } = useEventPhotos(eventId, { pollIntervalMs: 2000 });
+  const [event, setEvent] = useState<WeddingEvent | null>(null);
 
   useLayoutEffect(() => {
-    seedDemoEvent();
-    seedSampleUploads(eventId);
-    refresh();
+    let cancelled = false;
+    void loadEventForGuest(eventId).then((loaded) => {
+      if (cancelled) return;
+      if (loaded) seedSampleUploads(eventId);
+      setEvent(loaded);
+      refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [eventId, refresh]);
-
-  const event = getEvent(eventId);
 
   return (
     <PresentationSlideshow

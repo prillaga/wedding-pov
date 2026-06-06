@@ -21,13 +21,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#C9A962",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${cormorant.variable} ${outfit.variable}`}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased min-h-screen-safe overflow-x-hidden">
         {children}
       </body>
     </html>

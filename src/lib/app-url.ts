@@ -28,7 +28,9 @@ export function getAppOrigin(): string {
 }
 
 /** Guest invitation URL — always absolute HTTPS for reliable QR scanning. */
-export function getEventJoinUrl(eventId: string): string {
+export function getEventJoinUrl(eventId: string, bootstrap?: string): string {
   const id = decodeURIComponent(eventId).trim();
-  return `${getAppOrigin()}/wedding/${encodeURIComponent(id)}`;
+  const base = `${getAppOrigin()}/wedding/${encodeURIComponent(id)}`;
+  if (!bootstrap) return base;
+  return `${base}?cfg=${encodeURIComponent(bootstrap)}`;
 }

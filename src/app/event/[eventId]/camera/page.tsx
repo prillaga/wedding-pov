@@ -59,7 +59,7 @@ function CameraContent() {
 
 export default function CameraPage() {
   return (
-    <main className="fixed inset-0 z-40">
+    <main className="fixed inset-0 z-40 h-screen-safe">
       <Suspense
         fallback={
           <div className="min-h-dvh flex items-center justify-center bg-charcoal">

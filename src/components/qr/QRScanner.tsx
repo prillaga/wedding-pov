@@ -6,7 +6,7 @@ import { parseEventCodeInput } from "@/lib/event-utils";
 import { Camera, X } from "lucide-react";
 
 interface QRScannerProps {
-  onScan: (eventId: string) => void;
+  onScan: (raw: string) => void;
   onClose?: () => void;
   onManualEntry?: (code: string) => void;
 }
@@ -121,7 +121,7 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
             await safeStopScanner(scanner);
             scannerRef.current = null;
             setScanning(false);
-            onScanRef.current(eventId);
+            onScanRef.current(decoded);
           })();
         });
 
@@ -166,17 +166,17 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
       return;
     }
     void stopScanner().then(() => {
-      if (onManualEntry) onManualEntry(eventId);
-      else onScan(eventId);
+      if (onManualEntry) onManualEntry(manualCode);
+      else onScan(manualCode);
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-charcoal/95 flex flex-col safe-top safe-bottom">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2 text-ivory">
-          <Camera className="w-5 h-5 text-champagne" />
-          <span className="font-medium">
+    <div className="fixed inset-0 z-50 bg-charcoal/95 flex flex-col safe-top safe-bottom safe-x h-screen-safe">
+      <div className="flex items-center justify-between p-3 sm:p-4 shrink-0">
+        <div className="flex items-center gap-2 text-ivory min-w-0">
+          <Camera className="w-5 h-5 text-champagne shrink-0" />
+          <span className="font-medium text-sm sm:text-base truncate">
             {manualMode ? "Enter Event Code" : "Scan Invitation QR"}
           </span>
         </div>
@@ -191,7 +191,7 @@ export function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
         )}
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 min-h-0 overflow-y-auto touch-scroll-y pb-4">
         {manualMode ? (
           <div className="w-full max-w-sm space-y-4">
             {error && <p className="text-ivory/70 text-sm text-center">{error}</p>}

@@ -34,7 +34,9 @@ import {
   STORAGE_PLAN_GB,
   THEME_PRESETS,
 } from "./constants";
-import { getHardcodedDemoEvent } from "./demo-event";
+import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "./demo-event";
+import { readBootstrapFromLocation } from "./event-bootstrap";
+import { fetchRemoteEvent, pushRemoteEvent } from "./event-remote";
 import { getGuestUploadQuota } from "./photo-limits";
 import {
   generateDefaultHashtag,
@@ -152,7 +154,50 @@ export function resetAppData(): void {
 }
 
 export function getEvent(eventId: string): WeddingEvent | undefined {
-  return getEvents().find((e) => e.id === eventId);
+  const id = normalizeEventId(eventId);
+  if (isDemoEventId(id)) {
+    return getEvents().find((e) => e.id === id) ?? getHardcodedDemoEvent();
+  }
+  return getEvents().find((e) => e.id === id);
+}
+
+function cacheEventLocally(event: WeddingEvent): WeddingEvent {
+  const events = getEvents();
+  const exists = events.some((e) => e.id === event.id);
+  if (exists) {
+    write(
+      EVENTS_KEY,
+      events.map((e) => (e.id === event.id ? event : e))
+    );
+  } else {
+    write(EVENTS_KEY, [...events, event]);
+  }
+  return event;
+}
+
+/** Resolve event on any device — local cache, built-in demo, then cloud API. */
+export async function loadEventForGuest(eventId: string): Promise<WeddingEvent | null> {
+  const id = normalizeEventId(eventId);
+  if (!id) return null;
+
+  const bootstrap = readBootstrapFromLocation();
+  if (bootstrap && normalizeEventId(bootstrap.id) === id) {
+    return cacheEventLocally(bootstrap);
+  }
+
+  const local = getEvents().find((e) => e.id === id);
+  if (local) return local;
+
+  if (isDemoEventId(id)) {
+    return cacheEventLocally(getHardcodedDemoEvent());
+  }
+
+  const remote = await fetchRemoteEvent(id);
+  if (remote) {
+    return cacheEventLocally(remote);
+  }
+
+  return null;
 }
 
 export function saveEvent(event: WeddingEvent): void {
@@ -160,6 +205,7 @@ export function saveEvent(event: WeddingEvent): void {
     EVENTS_KEY,
     getEvents().map((e) => (e.id === event.id ? event : e))
   );
+  void pushRemoteEvent(event);
 }
 
 export function updateEventSettings(eventId: string, settings: Partial<EventSettings>): void {
@@ -307,6 +353,7 @@ export function createWeddingEvent(input: CreateWeddingEventInput): WeddingEvent
   });
 
   write(EVENTS_KEY, [...getEvents(), event]);
+  void pushRemoteEvent(event);
   return event;
 }
 
@@ -321,7 +368,8 @@ export function registerGuest(
   eventId: string,
   data: Pick<Guest, "firstName" | "lastName" | "relationship">
 ): Guest {
-  const event = getEvent(eventId) ?? ensureEvent(eventId);
+  const id = normalizeEventId(eventId);
+  const event = getEvent(id) ?? (isDemoEventId(id) ? seedDemoEvent() : undefined);
   if (!event || !isEventJoinable(event)) {
     throw new Error("This wedding is not accepting guests right now.");
   }
@@ -330,7 +378,7 @@ export function registerGuest(
     id: uuidv4(),
     ...data,
     joinedAt: new Date().toISOString(),
-    eventId,
+    eventId: id,
   };
   write(GUESTS_KEY, [...read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []), guest]);
   setSession({ eventId, guestId: guest.id });
@@ -791,10 +839,10 @@ export function getStorageDashboard(): StorageDashboardStats {
 }
 
 export function ensureEvent(eventId: string): WeddingEvent | undefined {
-  if (eventId === DEMO_EVENT_ID) {
+  const id = normalizeEventId(eventId);
+  if (isDemoEventId(id)) {
     seedDemoEvent();
-    return getEvent(eventId) ?? getHardcodedDemoEvent();
+    return getEvent(id) ?? getHardcodedDemoEvent();
   }
-  seedDemoEvent();
-  return getEvent(eventId);
+  return getEvent(id);
 }

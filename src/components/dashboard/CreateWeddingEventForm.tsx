@@ -71,7 +71,8 @@ export function CreateWeddingEventForm() {
           <h2 className="font-serif text-xl font-semibold text-green-900">Event Created!</h2>
           <p className="text-sm text-green-800 mt-1">
             Your wedding is ready. Share the QR code with guests — they scan, join, and start taking
-            photos immediately.
+            photos immediately. Re-download the QR after any changes so every guest phone can find
+            the event.
           </p>
         </div>
 

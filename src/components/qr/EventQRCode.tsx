@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/Button";
 import { getAppOrigin } from "@/lib/app-url";
+import { encodeEventBootstrap } from "@/lib/event-bootstrap";
 import { getEventJoinUrl, getEventShortCode } from "@/lib/event-utils";
 import { getEvent } from "@/lib/store";
 import { Copy, Download, Link2, Printer, Share2 } from "lucide-react";
@@ -65,8 +66,8 @@ export function EventQRCode({
 }: EventQRCodeProps) {
   const svgRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const joinUrl = getEventJoinUrl(eventId);
   const event = getEvent(eventId);
+  const joinUrl = getEventJoinUrl(eventId, event ? encodeEventBootstrap(event) : undefined);
   const shortCode = event ? getEventShortCode(event.settings) : eventId.slice(0, 6).toUpperCase();
   const displayLink = joinUrl.replace(/^https?:\/\//, "");
   const onLocalDev =

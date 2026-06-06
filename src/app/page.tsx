@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
 import { parseEventCodeInput } from "@/lib/event-utils";
+import { extractCfgParam } from "@/lib/event-bootstrap";
 import { Camera, Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,16 +27,20 @@ export default function HomePage() {
     }
     setManualError("");
     setShowScanner(false);
-    router.push(`/wedding/${encodeURIComponent(eventId)}`);
+    const cfg = extractCfgParam(raw);
+    const path = cfg
+      ? `/wedding/${encodeURIComponent(eventId)}?cfg=${encodeURIComponent(cfg)}`
+      : `/wedding/${encodeURIComponent(eventId)}`;
+    router.push(path);
   };
 
-  const handleScan = (eventId: string) => {
-    goToEvent(eventId);
+  const handleScan = (raw: string) => {
+    goToEvent(raw);
   };
 
   return (
-    <main className="min-h-dvh flex flex-col">
-      <section className="relative flex-1 flex flex-col items-center justify-center px-6 py-12 overflow-hidden">
+    <main className="min-h-screen-safe flex flex-col">
+      <section className="relative flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12 overflow-hidden safe-top">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-blush/60 blur-3xl" />
           <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-champagne-light/30 blur-3xl" />
@@ -50,7 +55,7 @@ export default function HomePage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blush mb-6">
             <Heart className="w-8 h-8 text-champagne fill-champagne/30" />
           </div>
-          <h1 className="font-serif text-4xl md:text-5xl font-semibold text-charcoal leading-tight">
+          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-charcoal leading-tight">
             {APP_NAME}
           </h1>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
@@ -77,7 +82,7 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      <section className="px-6 pb-8 safe-bottom">
+      <section className="px-4 sm:px-6 pb-6 sm:pb-8 safe-bottom safe-x">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

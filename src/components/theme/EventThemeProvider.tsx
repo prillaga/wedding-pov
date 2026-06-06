@@ -63,7 +63,7 @@ export function EventThemeProvider({
 
   return (
     <div
-      className="min-h-dvh"
+      className="min-h-screen-safe"
       style={{
         ...bgStyle,
         backgroundColor: theme.colors.primary,

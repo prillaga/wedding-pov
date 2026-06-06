@@ -33,9 +33,9 @@ export default function MyUploadsPage() {
   }
 
   return (
-    <main className="min-h-dvh pb-20">
+    <main className="min-h-screen-safe pb-24 sm:pb-28">
       <PageHeader title="My Uploads" subtitle="Manage your wedding POV photos" />
-      <div className="px-4 py-6">
+      <div className="px-4 sm:px-5 py-4 sm:py-6 safe-x">
         <MyUploads
           eventId={eventId}
           guest={guest}

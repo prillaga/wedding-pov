@@ -12,10 +12,9 @@ import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
 import { EventThemeProvider } from "@/components/theme/EventThemeProvider";
 import { useEventPhotos } from "@/hooks/useEventPhotos";
 import {
-  getEvent,
   getGuest,
   getSession,
-  seedDemoEvent,
+  loadEventForGuest,
   seedSampleUploads,
 } from "@/lib/store";
 import { formatGuestNamePOV } from "@/lib/utils";
@@ -33,12 +32,18 @@ export default function EventHomePage() {
   const [guest, setGuest] = useState<(Guest & { eventId?: string }) | null>(null);
 
   useLayoutEffect(() => {
-    seedDemoEvent();
-    seedSampleUploads(eventId);
-    setEvent(getEvent(eventId) ?? null);
-    const session = getSession();
-    setGuest(session ? getGuest(session.guestId) ?? null : null);
-    refreshPhotos();
+    let cancelled = false;
+    void loadEventForGuest(eventId).then((loaded) => {
+      if (cancelled) return;
+      if (loaded) seedSampleUploads(eventId);
+      setEvent(loaded);
+      const session = getSession();
+      setGuest(session ? getGuest(session.guestId) ?? null : null);
+      refreshPhotos();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [eventId, refreshPhotos]);
 
   if (event === undefined) {
@@ -94,7 +99,7 @@ export default function EventHomePage() {
 
   return (
     <EventThemeProvider event={event}>
-      <main className="min-h-dvh pb-28 luxury-page-bg relative overflow-hidden">
+      <main className="min-h-screen-safe pb-24 sm:pb-28 luxury-page-bg relative overflow-x-hidden">
         <div className="absolute inset-0 luxury-sparkles pointer-events-none opacity-60" />
         <div className="absolute top-20 -left-10 text-6xl opacity-[0.04] select-none">✿</div>
         <div className="absolute bottom-40 -right-8 text-5xl opacity-[0.04] select-none">❀</div>
@@ -151,7 +156,7 @@ export default function EventHomePage() {
           {slideshowPhotos.length > 0 && (
             <section>
               <h2 className="font-serif text-lg mb-4 px-1">Recent POVs</h2>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="flex gap-3 touch-scroll-x pb-2 -mx-1 px-1">
                 {[...slideshowPhotos].reverse().slice(0, 8).map((upload, i) => (
                   <motion.div
                     key={upload.id}

@@ -2,14 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: #fffef9;
   color: #2c2c2c;
   min-height: 100dvh;
+  min-height: 100svh;
+  overflow-x: hidden;
 }
 
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.safe-x {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+.min-h-screen-safe {
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+.h-screen-safe {
+  height: 100dvh;
+  height: 100svh;
+}
+
+.touch-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.touch-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.touch-scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
 
 .wedding-shadow {
   box-shadow: 0 4px 24px rgba(201, 169, 98, 0.12);

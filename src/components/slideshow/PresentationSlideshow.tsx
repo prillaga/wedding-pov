@@ -75,14 +75,14 @@ export function PresentationSlideshow({
       {showLaunch ? (
         <button
           type="button"
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-center px-8 cursor-pointer"
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-center px-4 sm:px-8 py-8 safe-top safe-bottom overflow-y-auto touch-scroll-y cursor-pointer"
           onClick={startPresentation}
         >
-          <div className="max-w-md space-y-6">
+          <div className="max-w-md space-y-4 sm:space-y-6 w-full">
             {displayMode ? (
               <>
-                <Monitor className="w-12 h-12 text-champagne/70 mx-auto" />
-                <h1 className="font-serif text-3xl md:text-4xl text-ivory">Reception Display Mode</h1>
+                <Monitor className="w-10 h-10 sm:w-12 sm:h-12 text-champagne/70 mx-auto" />
+                <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-ivory">Reception Display Mode</h1>
                 <p className="text-ivory/60 text-sm leading-relaxed">
                   Connect this device to a TV or projector. Guest photos play automatically with
                   cinematic transitions — updating live as new uploads arrive.
@@ -90,8 +90,8 @@ export function PresentationSlideshow({
               </>
             ) : (
               <>
-                <Play className="w-12 h-12 text-champagne/70 mx-auto fill-champagne/20" />
-                <h1 className="font-serif text-3xl md:text-4xl text-ivory">
+                <Play className="w-10 h-10 sm:w-12 sm:h-12 text-champagne/70 mx-auto fill-champagne/20" />
+                <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-ivory">
                   {coupleName ? `${coupleName} Slideshow` : "Wedding Slideshow"}
                 </h1>
                 <p className="text-ivory/60 text-sm leading-relaxed">

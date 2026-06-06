@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
+import { PhotoSaveActions } from "@/components/photos/PhotoSaveActions";
 import { FILTERS } from "@/lib/constants";
 import { applyFilterToImage, centerSquareCrop } from "@/lib/image-utils";
 import { formatGuestPOV } from "@/lib/utils";
@@ -115,7 +116,7 @@ export function PhotoPreviewScreen({
         </div>
       </div>
 
-      <div className="p-4 bg-charcoal/95 space-y-3 safe-bottom border-t border-white/10">
+      <div className="p-3 sm:p-4 bg-charcoal/95 space-y-3 safe-bottom border-t border-white/10 max-h-[min(48dvh,420px)] touch-scroll-y shrink-0">
         <p className="text-champagne text-sm font-serif text-center">
           {formatGuestPOV(guest)}
         </p>
@@ -139,7 +140,7 @@ export function PhotoPreviewScreen({
               {showFilters ? "Hide Filters" : "Apply Filter"}
             </button>
             {showFilters && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-2 touch-scroll-x pb-1 -mx-1 px-1">
                 {FILTERS.map((f) => (
                   <button
                     key={f.value}
@@ -174,6 +175,16 @@ export function PhotoPreviewScreen({
           placeholder="Add a caption (optional)"
           className="w-full px-4 py-2.5 rounded-xl bg-white/10 text-ivory placeholder:text-ivory/40 border border-white/10 text-sm"
         />
+
+        {!isVideo && (
+          <PhotoSaveActions
+            imageData={imageData}
+            filename={`${guest.firstName}-${guest.lastName}-POV.jpg`}
+            title={`${guest.firstName} ${guest.lastName}'s POV`}
+            variant="dark"
+            showShare={false}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           {settings.retakeBeforeUpload && (

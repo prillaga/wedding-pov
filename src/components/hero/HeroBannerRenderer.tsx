@@ -88,7 +88,7 @@ export function HeroBannerRenderer({
       </p>
 
       <h1
-        className={`font-semibold mb-3 md:mb-4 leading-tight ${compact ? "text-2xl" : "text-5xl md:text-6xl"}`}
+        className={`font-semibold mb-3 md:mb-4 leading-tight break-words ${compact ? "text-2xl" : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl"}`}
         style={{
           color: tc.title,
           fontFamily: "var(--event-heading-font, Georgia, serif)",
@@ -107,9 +107,9 @@ export function HeroBannerRenderer({
           {formatDate(settings.weddingDate)}
         </span>
         {!isSplit && <span className="hidden sm:inline opacity-40">·</span>}
-        <span className="flex items-center gap-1.5">
-          <MapPin className="w-4 h-4" style={{ color: tc.hashtag }} />
-          {settings.venue}
+        <span className="flex items-center gap-1.5 max-w-full break-words text-center sm:text-left">
+          <MapPin className="w-4 h-4 shrink-0" style={{ color: tc.hashtag }} />
+          <span className="min-w-0">{settings.venue}</span>
         </span>
       </div>
 
@@ -124,8 +124,10 @@ export function HeroBannerRenderer({
         <button
           type="button"
           onClick={onJoinClick}
-          className={`inline-flex items-center justify-center gap-2 font-medium rounded-full cursor-pointer relative z-50 ${
-            compact ? "px-5 py-2.5 text-sm min-w-[160px]" : "px-8 py-4 text-lg min-w-[220px]"
+          className={`inline-flex items-center justify-center gap-2 font-medium rounded-full cursor-pointer relative z-50 touch-target ${
+            compact
+              ? "px-5 py-2.5 text-sm min-w-[160px]"
+              : "px-6 py-3 text-base sm:px-8 sm:py-4 sm:text-lg w-full max-w-[280px] sm:max-w-none sm:min-w-[220px]"
           } ${isSplit ? "" : "mx-auto"}`}
           style={{
             background: tc.button,
@@ -159,7 +161,7 @@ export function HeroBannerRenderer({
     ? "h-full min-h-[400px]"
     : compact
       ? "min-h-[420px] rounded-[2rem]"
-      : "min-h-dvh";
+      : "min-h-screen-safe";
 
   return (
     <section
@@ -187,8 +189,8 @@ export function HeroBannerRenderer({
       <div
         className={`relative z-30 flex-1 flex w-full ${
           isSplit
-            ? "flex-col lg:flex-row items-center justify-center gap-8 px-6 py-12"
-            : "flex-col items-center justify-center px-6 py-16 text-center safe-top safe-bottom"
+            ? "flex-col lg:flex-row items-center justify-center gap-6 sm:gap-8 px-4 sm:px-6 py-10 sm:py-12 safe-x"
+            : "flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-16 text-center safe-top safe-bottom safe-x touch-scroll-y"
         }`}
       >
         {isSplit && heroImage && (

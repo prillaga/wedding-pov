@@ -70,15 +70,15 @@ export function getHeroOverlayStyle(hero: HeroSettings): CSSProperties {
 export function getInvitationWrapperClass(style: HeroSettings["invitationStyle"]): string {
   switch (style) {
     case "floral-border":
-      return "border-2 border-champagne/40 rounded-[2rem] p-8 md:p-12 relative before:content-['✿'] before:absolute before:top-4 before:left-4 before:text-champagne/50 after:content-['✿'] after:absolute after:bottom-4 after:right-4 after:text-champagne/50";
+      return "border-2 border-champagne/40 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 md:p-12 relative before:content-['✿'] before:absolute before:top-3 before:left-3 sm:before:top-4 sm:before:left-4 before:text-champagne/50 after:content-['✿'] after:absolute after:bottom-3 after:right-3 sm:after:bottom-4 sm:after:right-4 after:text-champagne/50";
     case "gold-accents":
-      return "border border-champagne/60 rounded-2xl p-8 md:p-10 shadow-[0_0_40px_rgba(201,169,98,0.15)]";
+      return "border border-champagne/60 rounded-2xl p-5 sm:p-8 md:p-10 shadow-[0_0_40px_rgba(201,169,98,0.15)]";
     case "glass-card":
-      return "luxury-glass rounded-[2rem] p-8 md:p-12 border border-white/20 backdrop-blur-xl bg-white/10";
+      return "luxury-glass rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 md:p-12 border border-white/20 backdrop-blur-xl bg-white/10";
     case "luxury":
-      return "rounded-[2rem] p-8 md:p-12 border border-champagne/20 bg-black/20 backdrop-blur-sm";
+      return "rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 md:p-12 border border-champagne/20 bg-black/20 backdrop-blur-sm";
     case "minimal":
-      return "p-4 md:p-6";
+      return "p-3 sm:p-4 md:p-6";
     default:
       return "";
   }

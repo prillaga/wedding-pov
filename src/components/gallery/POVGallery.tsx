@@ -1,22 +1,76 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { POVBadge } from "@/components/layout/PageHeader";
+import { PhotoSaveActions } from "@/components/photos/PhotoSaveActions";
 import { GALLERY_SORT_OPTIONS } from "@/lib/constants";
 import { getEvent } from "@/lib/store";
-import { getSegmentLabel } from "@/lib/utils";
+import { formatGuestNamePOV, getSegmentLabel } from "@/lib/utils";
 import type { GallerySort, Upload } from "@/types";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 
 interface POVGalleryProps {
   eventId: string;
   uploads: Upload[];
 }
 
+function GalleryPhotoModal({
+  upload,
+  onClose,
+}: {
+  upload: Upload;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/90 flex flex-col"
+    >
+      <div className="flex items-center justify-between p-4 safe-top safe-x">
+        <POVBadge name={upload.guestName} size="sm" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-full bg-white/10 text-ivory touch-target"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+        {upload.isVideo ? (
+          <video src={upload.imageData} controls className="max-w-full max-h-full" />
+        ) : (
+          <img
+            src={upload.imageData}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+          />
+        )}
+      </div>
+      {upload.caption && (
+        <p className="text-center text-ivory/80 italic px-4 pb-2">{upload.caption}</p>
+      )}
+      <div className="p-4 safe-bottom safe-x">
+        <PhotoSaveActions
+          imageData={upload.imageData}
+          filename={`${upload.guestName.replace(/\s+/g, "-")}-POV-${upload.id.slice(0, 6)}.jpg`}
+          title={formatGuestNamePOV(upload.guestName)}
+          isVideo={upload.isVideo}
+          variant="dark"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
 export function POVGallery({ eventId, uploads }: POVGalleryProps) {
   const [sort, setSort] = useState<GallerySort>("guest");
   const [expandedGuest, setExpandedGuest] = useState<string | null>(null);
+  const [selectedUpload, setSelectedUpload] = useState<Upload | null>(null);
   const event = getEvent(eventId);
   const maxPhotos = event?.photoLimits.maxPhotos ?? 10;
 
@@ -57,7 +111,8 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
 
   if (sort === "guest") {
     return (
-      <div className="space-y-4">
+      <>
+        <div className="space-y-4">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {GALLERY_SORT_OPTIONS.map((opt) => (
             <button
@@ -99,14 +154,19 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
                 {open && (
                   <div className="px-4 pb-4 grid grid-cols-3 gap-2">
                     {group.photos.map((upload) => (
-                      <div key={upload.id} className="rounded-xl overflow-hidden aspect-square relative">
+                      <button
+                        key={upload.id}
+                        type="button"
+                        onClick={() => setSelectedUpload(upload)}
+                        className="rounded-xl overflow-hidden aspect-square relative"
+                      >
                         <img src={upload.imageData} alt="" className="w-full h-full object-cover" />
                         {upload.isExtra && (
                           <span className="absolute top-1 right-1 text-[8px] bg-charcoal/70 text-ivory px-1.5 py-0.5 rounded-full">
                             Extra
                           </span>
                         )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -114,12 +174,20 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
             );
           })}
         </div>
-      </div>
+        </div>
+
+        <AnimatePresence>
+          {selectedUpload && (
+            <GalleryPhotoModal upload={selectedUpload} onClose={() => setSelectedUpload(null)} />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <>
+      <div className="space-y-4">
       <div className="flex gap-2 overflow-x-auto pb-1">
         {GALLERY_SORT_OPTIONS.map((opt) => (
           <button
@@ -136,12 +204,14 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
 
       <div className="grid grid-cols-2 gap-3">
         {sortedFlat.map((upload, i) => (
-          <motion.div
+          <motion.button
             key={upload.id}
+            type="button"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
-            className="rounded-2xl overflow-hidden wedding-shadow bg-white"
+            onClick={() => setSelectedUpload(upload)}
+            className="rounded-2xl overflow-hidden wedding-shadow bg-white text-left"
           >
             <img src={upload.imageData} alt="" className="w-full aspect-[4/5] object-cover" />
             <div className="p-3">
@@ -149,9 +219,16 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
               {upload.caption && <p className="text-xs text-warm-gray mt-1 italic line-clamp-2">{upload.caption}</p>}
               <p className="text-[10px] text-champagne/70 mt-1">{getSegmentLabel(upload.segment)}</p>
             </div>
-          </motion.div>
+          </motion.button>
         ))}
       </div>
-    </div>
+      </div>
+
+      <AnimatePresence>
+        {selectedUpload && (
+          <GalleryPhotoModal upload={selectedUpload} onClose={() => setSelectedUpload(null)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

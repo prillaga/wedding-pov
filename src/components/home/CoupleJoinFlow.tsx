@@ -60,16 +60,16 @@ export function CoupleJoinFlow({ event, startOnJoin = false }: CoupleJoinFlowPro
       onJoinClick={() => setStep("join")}
     >
       {step === "join" && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center px-6 py-16 safe-top safe-bottom">
-          <div className="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl p-6 text-left shadow-xl">
+        <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center px-4 sm:px-6 py-6 sm:py-16 safe-top safe-bottom overflow-y-auto touch-scroll-y">
+          <div className="max-w-md w-full bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-left shadow-xl max-h-[min(92dvh,720px)] overflow-y-auto touch-scroll-y">
             <button
               type="button"
               onClick={() => setStep("hero")}
-              className="text-sm text-champagne mb-4 cursor-pointer"
+              className="text-sm text-champagne mb-4 cursor-pointer touch-target"
             >
               ← Back
             </button>
-            <h2 className="font-serif text-2xl text-charcoal text-center mb-1">
+            <h2 className="font-serif text-xl sm:text-2xl text-charcoal text-center mb-1">
               Join {coupleLabel}
             </h2>
             <p className="text-warm-gray text-sm text-center mb-5">

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { POVBadge } from "@/components/layout/PageHeader";
-import { downloadImage, shareImage } from "@/lib/image-utils";
+import { PhotoSaveActions } from "@/components/photos/PhotoSaveActions";
 import { getGuestUploadQuota } from "@/lib/photo-limits";
 import {
   deleteGuestUpload,
@@ -15,10 +15,8 @@ import {
 import { formatGuestNamePOV, formatGuestPOV } from "@/lib/utils";
 import type { Guest, Upload } from "@/types";
 import {
-  Download,
   Eye,
   RefreshCw,
-  Share2,
   Trash2,
   X,
 } from "lucide-react";
@@ -68,17 +66,6 @@ export function MyUploads({ eventId, guest, onReplace, onChange }: MyUploadsProp
     deleteGuestUpload(upload.id, guest.id, restoreSlot);
     refresh();
     setViewUpload(null);
-  };
-
-  const handleDownload = (upload: Upload) => {
-    downloadImage(upload.imageData, `${guestName}-POV-${upload.id.slice(0, 6)}.jpg`);
-  };
-
-  const handleShare = async (upload: Upload) => {
-    const ok = await shareImage(upload.imageData, formatGuestNamePOV(guestName));
-    if (!ok) {
-      alert("Sharing is not supported on this device.");
-    }
   };
 
   return (
@@ -197,31 +184,22 @@ export function MyUploads({ eventId, guest, onReplace, onChange }: MyUploadsProp
             {viewUpload.caption && (
               <p className="text-center text-ivory/80 italic px-4 pb-2">{viewUpload.caption}</p>
             )}
-            <div className="flex gap-2 p-4 safe-bottom">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                onClick={() => handleDownload(viewUpload)}
-              >
-                <Download className="w-4 h-4" /> Download
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                onClick={() => handleShare(viewUpload)}
-              >
-                <Share2 className="w-4 h-4" /> Share
-              </Button>
+            <div className="p-4 safe-bottom space-y-3">
+              <PhotoSaveActions
+                imageData={viewUpload.imageData}
+                filename={`${guestName.replace(/\s+/g, "-")}-POV-${viewUpload.id.slice(0, 6)}.jpg`}
+                title={formatGuestNamePOV(guestName)}
+                isVideo={viewUpload.isVideo}
+                variant="dark"
+              />
               {settings?.deleteAfterUpload && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-red-400"
+                  className="w-full text-red-400"
                   onClick={() => handleDelete(viewUpload)}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" /> Delete Photo
                 </Button>
               )}
             </div>

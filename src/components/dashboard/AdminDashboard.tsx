@@ -18,6 +18,7 @@ import {
 } from "@/lib/store";
 import { formatGuestNamePOV } from "@/lib/utils";
 import { getEventStatusLabel } from "@/lib/event-utils";
+import { pushRemoteEvent } from "@/lib/event-remote";
 import type { Upload } from "@/types";
 import {
   BarChart3,
@@ -66,9 +67,11 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
   const [event, setEvent] = useState(getEvent(eventId));
 
   const refresh = () => {
-    setEvent(getEvent(eventId));
+    const current = getEvent(eventId);
+    setEvent(current);
     setUploads(getUploads(eventId, true));
     setStats(getEventStats(eventId));
+    if (current) void pushRemoteEvent(current);
   };
 
   useEffect(() => {

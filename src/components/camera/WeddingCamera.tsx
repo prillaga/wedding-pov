@@ -61,6 +61,10 @@ export function WeddingCamera({
   const [uploadTick, setUploadTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showPostUploadPrompt, setShowPostUploadPrompt] = useState(false);
+  const [lastUploadedMedia, setLastUploadedMedia] = useState<{
+    data: string;
+    isVideo: boolean;
+  } | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -278,6 +282,8 @@ export function WeddingCamera({
       });
     }
 
+    setLastUploadedMedia({ data: captured, isVideo: mode === "video" });
+
     setUploading(false);
     setCaption("");
     setUploadTick((t) => t + 1);
@@ -325,7 +331,7 @@ export function WeddingCamera({
 
   return (
     <div
-      className="relative flex flex-col h-full min-h-dvh"
+      className="relative flex flex-col h-full h-screen-safe min-h-0"
       style={{ background: event?.theme.screenBackgrounds.camera ?? "#0A0A0A" }}
     >
       <canvas ref={canvasRef} className="hidden" />
@@ -339,14 +345,20 @@ export function WeddingCamera({
 
         <div className="relative flex-1 overflow-hidden min-h-0">
           {successMessage && <CameraSuccessToast message={successMessage} />}
-          {showPostUploadPrompt && (
+          {showPostUploadPrompt && lastUploadedMedia && (
             <PostUploadPrompt
+              imageData={lastUploadedMedia.data}
+              filename={`${guestName.replace(/\s+/g, "-")}-POV.jpg`}
+              title={`${guestName}'s POV`}
+              isVideo={lastUploadedMedia.isVideo}
               onContinueCamera={() => {
                 setShowPostUploadPrompt(false);
+                setLastUploadedMedia(null);
                 showSuccess("Photo uploaded successfully.");
               }}
               onViewGallery={() => {
                 setShowPostUploadPrompt(false);
+                setLastUploadedMedia(null);
                 onNavigate?.("gallery");
               }}
             />
@@ -425,8 +437,8 @@ export function WeddingCamera({
 
         {!showingPreview && (
           <>
-            <div className="px-3 py-2 bg-black/60 overflow-x-auto shrink-0">
-              <div className="flex gap-2">
+            <div className="px-3 py-2 bg-black/60 touch-scroll-x shrink-0">
+              <div className="flex gap-2 min-w-max">
                 {FILTERS.map((f) => (
                   <button
                     key={f.value}
@@ -443,45 +455,44 @@ export function WeddingCamera({
                 ))}
               </div>
             </div>
-            <div className="px-4 py-4 bg-charcoal safe-bottom space-y-3 shrink-0">
+            <div className="px-3 sm:px-4 py-3 sm:py-4 bg-charcoal safe-bottom space-y-2 sm:space-y-3 shrink-0">
               <Select
                 options={SEGMENTS.map((s) => ({ value: s.value, label: s.label }))}
                 value={segment}
                 onChange={(e) => setSegment(e.target.value as EventSegment)}
                 className="w-full py-2 text-sm bg-white/10 text-ivory border-white/10 rounded-xl"
               />
-              <div className="flex items-center justify-center gap-6">
+              <div className="flex items-center justify-center gap-4 sm:gap-6">
                 <button
                   type="button"
                   onClick={() => setMode("photo")}
-                  className={`p-2 rounded-full ${mode === "photo" ? "text-champagne" : "text-ivory/50"}`}
+                  className={`p-2 rounded-full touch-target ${mode === "photo" ? "text-champagne" : "text-ivory/50"}`}
                 >
-                  <ImageIcon className="w-6 h-6" />
+                  <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
                 <button
                   type="button"
                   onClick={handleCapture}
-                  className={`rounded-full border-4 flex items-center justify-center active:scale-95 transition-transform ${
+                  className={`rounded-full border-4 flex items-center justify-center active:scale-95 transition-transform touch-target w-16 h-16 sm:w-[72px] sm:h-[72px] ${
                     recording ? "border-red-500 bg-red-500/20" : "border-ivory bg-white/10"
                   }`}
-                  style={{ width: 72, height: 72 }}
                 >
                   <div
                     className={`rounded-full ${
                       recording
-                        ? "w-6 h-6 bg-red-500"
+                        ? "w-5 h-5 sm:w-6 sm:h-6 bg-red-500"
                         : mode === "video"
-                          ? "w-8 h-8 bg-red-500"
-                          : "w-14 h-14 bg-ivory"
+                          ? "w-7 h-7 sm:w-8 sm:h-8 bg-red-500"
+                          : "w-12 h-12 sm:w-14 sm:h-14 bg-ivory"
                     }`}
                   />
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("video")}
-                  className={`p-2 rounded-full ${mode === "video" ? "text-champagne" : "text-ivory/50"}`}
+                  className={`p-2 rounded-full touch-target ${mode === "video" ? "text-champagne" : "text-ivory/50"}`}
                 >
-                  <Video className="w-6 h-6" />
+                  <Video className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>

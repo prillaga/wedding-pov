@@ -5,10 +5,10 @@ import { cn, toPossessive } from "@/lib/utils";
 
 export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   return (
-    <motion.header initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="px-5 pt-6 pb-4 safe-top">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-2xl font-semibold">{title}</h1>
+    <motion.header initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="px-4 sm:px-5 pt-4 sm:pt-6 pb-4 safe-top safe-x">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="font-serif text-xl sm:text-2xl font-semibold break-words">{title}</h1>
           {subtitle && <p className="text-warm-gray text-sm mt-1">{subtitle}</p>}
         </div>
         {children}
