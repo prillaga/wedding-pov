@@ -6,8 +6,9 @@ import {
   LIMIT_TYPE_LABELS,
   PHOTO_LIMIT_OPTIONS,
   AFTER_UPLOAD_OPTIONS,
+  VIDEO_DURATION_OPTIONS,
 } from "@/lib/constants";
-import { updatePhotoLimits, updatePhotoManagement } from "@/lib/store";
+import { updatePhotoLimits, updatePhotoManagement, updateVideoLimits } from "@/lib/store";
 import type {
   EventStats,
   LimitReachedBehavior,
@@ -110,6 +111,48 @@ export function PhotoLimitManager({ event, stats, onRefresh }: PhotoLimitManager
             </p>
           </div>
         )}
+      </section>
+
+      <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-4">
+        <div>
+          <h3 className="font-medium">Video Recording Limit</h3>
+          <p className="text-xs text-warm-gray mt-1">
+            Max length for each in-app video clip. Recording stops automatically at the limit.
+          </p>
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-warm-gray mb-2">Max Video Length</p>
+          <div className="flex flex-wrap gap-2">
+            {VIDEO_DURATION_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  updateVideoLimits(event.id, { maxDurationSeconds: opt.value });
+                  onRefresh();
+                }}
+                className={`min-w-[4rem] px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                  event.videoLimits.maxDurationSeconds === opt.value
+                    ? "bg-champagne text-white border-champagne"
+                    : "border-champagne/20 text-warm-gray hover:bg-blush"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-blush/40 border border-champagne/15 text-sm">
+          <p className="text-xs uppercase tracking-wider text-warm-gray mb-1">Guest Camera</p>
+          <p className="text-charcoal">
+            Guests see a timer while recording and cannot exceed{" "}
+            {VIDEO_DURATION_OPTIONS.find((o) => o.value === event.videoLimits.maxDurationSeconds)
+              ?.label ?? "3 min"}
+            .
+          </p>
+        </div>
       </section>
 
       <section className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10">

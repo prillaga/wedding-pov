@@ -93,6 +93,13 @@ export interface PhotoLimitSettings {
   limitReachedBehavior: LimitReachedBehavior;
 }
 
+/** Max length for a single in-app video recording (seconds). */
+export type VideoDurationLimit = 60 | 120 | 180;
+
+export interface VideoLimitSettings {
+  maxDurationSeconds: VideoDurationLimit;
+}
+
 export interface EventSettings {
   brideName: string;
   groomName: string;
@@ -197,6 +204,7 @@ export interface AdminTemplate {
   createdAt: string;
   theme?: Partial<ThemeSettings>;
   photoLimits?: Partial<PhotoLimitSettings>;
+  videoLimits?: Partial<VideoLimitSettings>;
 }
 
 export interface PhotoManagementSettings {
@@ -237,6 +245,7 @@ export interface WeddingEvent {
   pin?: string;
   settings: EventSettings;
   photoLimits: PhotoLimitSettings;
+  videoLimits: VideoLimitSettings;
   theme: ThemeSettings;
   slideshow: SlideshowConfig;
   moderation: ModerationSettings;

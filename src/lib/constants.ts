@@ -6,6 +6,7 @@ import type {
   HeroSettings,
   PhotoLimitValue,
   PhotoManagementSettings,
+  VideoDurationLimit,
   ScreenBackgrounds,
   SlideshowStyle,
   ThemeColors,
@@ -205,6 +206,27 @@ export const DEFAULT_PHOTO_LIMITS = {
   maxPhotos: 10 as const,
   limitReachedBehavior: "block" as const,
 };
+
+export const VIDEO_DURATION_OPTIONS: { value: VideoDurationLimit; label: string }[] = [
+  { value: 60, label: "1 min" },
+  { value: 120, label: "2 min" },
+  { value: 180, label: "3 min" },
+];
+
+export const DEFAULT_VIDEO_LIMITS = {
+  maxDurationSeconds: 180 as const,
+};
+
+export function formatRecordingTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export function getVideoDurationLabel(seconds: VideoDurationLimit): string {
+  return VIDEO_DURATION_OPTIONS.find((o) => o.value === seconds)?.label ?? `${seconds / 60} min`;
+}
 
 export const DEFAULT_SCREEN_BACKGROUNDS: ScreenBackgrounds = {
   app: "#FFFEF9",

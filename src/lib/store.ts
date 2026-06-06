@@ -12,6 +12,7 @@ import type {
   PhotoLimitSettings,
   PhotoLimitValue,
   PhotoManagementSettings,
+  VideoLimitSettings,
   SlideshowConfig,
   ThemePreset,
   ThemeSettings,
@@ -27,6 +28,7 @@ import {
   DEFAULT_MODERATION,
   DEFAULT_PHOTO_LIMITS,
   DEFAULT_PHOTO_MANAGEMENT,
+  DEFAULT_VIDEO_LIMITS,
   DEFAULT_SCREEN_BACKGROUNDS,
   DEFAULT_SLIDESHOW,
   DEFAULT_THEME,
@@ -108,6 +110,7 @@ function migrateEvent(raw: Partial<WeddingEvent> & { id: string }): WeddingEvent
     pin: raw.pin,
     settings,
     photoLimits: raw.photoLimits ?? { ...DEFAULT_PHOTO_LIMITS },
+    videoLimits: { ...DEFAULT_VIDEO_LIMITS, ...(raw.videoLimits ?? {}) },
     theme: {
       ...DEFAULT_THEME,
       ...(raw.theme ?? {}),
@@ -244,6 +247,12 @@ export function updatePhotoLimits(eventId: string, limits: Partial<PhotoLimitSet
   saveEvent({ ...event, photoLimits: { ...event.photoLimits, ...limits } });
 }
 
+export function updateVideoLimits(eventId: string, limits: Partial<VideoLimitSettings>): void {
+  const event = getEvent(eventId);
+  if (!event) return;
+  saveEvent({ ...event, videoLimits: { ...event.videoLimits, ...limits } });
+}
+
 export function updateTheme(eventId: string, theme: ThemeSettingsPatch): void {
   const event = getEvent(eventId);
   if (!event) return;
@@ -303,6 +312,7 @@ export interface CreateWeddingEventInput {
   hashtag?: string;
   welcomeMessage?: string;
   maxPhotos?: PhotoLimitValue;
+  maxVideoDurationSeconds?: VideoLimitSettings["maxDurationSeconds"];
   themePreset?: ThemePreset;
   couplePhoto?: string;
 }
@@ -335,6 +345,10 @@ export function createWeddingEvent(input: CreateWeddingEventInput): WeddingEvent
       ...DEFAULT_PHOTO_LIMITS,
       enabled: true,
       maxPhotos: input.maxPhotos ?? 25,
+    },
+    videoLimits: {
+      ...DEFAULT_VIDEO_LIMITS,
+      maxDurationSeconds: input.maxVideoDurationSeconds ?? DEFAULT_VIDEO_LIMITS.maxDurationSeconds,
     },
     theme: {
       ...DEFAULT_THEME,

@@ -6,6 +6,7 @@ import {
   DEFAULT_MODERATION,
   DEFAULT_PHOTO_LIMITS,
   DEFAULT_PHOTO_MANAGEMENT,
+  DEFAULT_VIDEO_LIMITS,
   DEFAULT_SCREEN_BACKGROUNDS,
   DEFAULT_SLIDESHOW,
   DEFAULT_THEME,
@@ -45,6 +46,7 @@ export function getHardcodedDemoEvent(): WeddingEvent {
       groomName: "John",
     },
     photoLimits: { ...DEFAULT_PHOTO_LIMITS },
+    videoLimits: { ...DEFAULT_VIDEO_LIMITS },
     theme: {
       ...DEFAULT_THEME,
       preset: "champagne",

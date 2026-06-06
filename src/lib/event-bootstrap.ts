@@ -1,4 +1,4 @@
-import { DEFAULT_HERO, DEFAULT_MODERATION, DEFAULT_PHOTO_LIMITS, DEFAULT_PHOTO_MANAGEMENT, DEFAULT_SCREEN_BACKGROUNDS, DEFAULT_SLIDESHOW, DEFAULT_THEME, THEME_PRESETS } from "@/lib/constants";
+import { DEFAULT_HERO, DEFAULT_MODERATION, DEFAULT_PHOTO_LIMITS, DEFAULT_PHOTO_MANAGEMENT, DEFAULT_SCREEN_BACKGROUNDS, DEFAULT_SLIDESHOW, DEFAULT_THEME, DEFAULT_VIDEO_LIMITS, THEME_PRESETS } from "@/lib/constants";
 import { normalizeEventId } from "@/lib/demo-event";
 import type { WeddingEvent } from "@/types";
 
@@ -83,6 +83,7 @@ function eventFromCompact(raw: CompactBootstrap): WeddingEvent | null {
       ...DEFAULT_PHOTO_LIMITS,
       maxPhotos: raw.mp ?? DEFAULT_PHOTO_LIMITS.maxPhotos,
     },
+    videoLimits: { ...DEFAULT_VIDEO_LIMITS },
     theme: {
       ...DEFAULT_THEME,
       preset,

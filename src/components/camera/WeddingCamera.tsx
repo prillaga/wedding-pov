@@ -8,7 +8,7 @@ import { PhotoPreviewScreen } from "@/components/camera/PhotoPreviewScreen";
 import { PostUploadPrompt } from "@/components/camera/PostUploadPrompt";
 import { UploadIndicator } from "@/components/camera/UploadIndicator";
 import { UploadsDisabledScreen } from "@/components/camera/UploadsDisabledScreen";
-import { FILTERS, SEGMENTS } from "@/lib/constants";
+import { FILTERS, SEGMENTS, formatRecordingTime, getVideoDurationLabel } from "@/lib/constants";
 import { compressImageForUpload, getFilterCss } from "@/lib/image-utils";
 import { canGuestUpload } from "@/lib/photo-limits";
 import {
@@ -20,9 +20,9 @@ import {
 import type { AfterUploadBehavior, CameraFilter, EventSegment, Guest } from "@/types";
 import {
   Camera,
-  FlipHorizontal,
   FolderOpen,
   Image as ImageIcon,
+  SwitchCamera,
   Video,
 } from "lucide-react";
 import Link from "next/link";
@@ -58,6 +58,7 @@ export function WeddingCamera({
   const [uploading, setUploading] = useState(false);
   const [mode, setMode] = useState<"photo" | "video">("photo");
   const [recording, setRecording] = useState(false);
+  const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
   const [uploadTick, setUploadTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showPostUploadPrompt, setShowPostUploadPrompt] = useState(false);
@@ -68,10 +69,15 @@ export function WeddingCamera({
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const event = getEvent(eventId);
   const guestName = `${guest.firstName} ${guest.lastName}`;
   const photoMgmt = event?.photoManagement;
+  const maxVideoDurationMs = (event?.videoLimits?.maxDurationSeconds ?? 180) * 1000;
+  const maxVideoDurationLabel = getVideoDurationLabel(
+    event?.videoLimits?.maxDurationSeconds ?? 180
+  );
   const isReplaceMode = Boolean(replaceUploadId && photoMgmt?.replaceUploadedPhotos);
   const showingPreview = Boolean(captured && photoMgmt);
 
@@ -114,6 +120,7 @@ export function WeddingCamera({
   useEffect(() => {
     return () => {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     };
   }, []);
 
@@ -230,6 +237,35 @@ export function WeddingCamera({
     }
   };
 
+  const clearRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const stopRecording = useCallback(
+    (autoStopped = false) => {
+      if (!mediaRecorderRef.current || mediaRecorderRef.current.state === "inactive") {
+        clearRecordingTimer();
+        setRecording(false);
+        setRecordingElapsedMs(0);
+        return;
+      }
+
+      mediaRecorderRef.current.stop();
+      clearRecordingTimer();
+      setRecording(false);
+
+      if (autoStopped) {
+        showSuccess(`Video stopped at ${maxVideoDurationLabel} limit.`);
+      }
+
+      setRecordingElapsedMs(0);
+    },
+    [clearRecordingTimer, maxVideoDurationLabel, showSuccess]
+  );
+
   const startRecording = () => {
     if (!isReplaceMode && !uploadCheck.allowed && !uploadCheck.markAsExtra) return;
     if (!streamRef.current) return;
@@ -237,7 +273,9 @@ export function WeddingCamera({
     chunksRef.current = [];
     const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
     mediaRecorderRef.current = recorder;
-    recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       const reader = new FileReader();
@@ -247,13 +285,20 @@ export function WeddingCamera({
       };
       reader.readAsDataURL(blob);
     };
-    recorder.start();
-    setRecording(true);
-  };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
+    const startedAt = Date.now();
+    setRecordingElapsedMs(0);
+    clearRecordingTimer();
+    recordingTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      setRecordingElapsedMs(elapsed);
+      if (elapsed >= maxVideoDurationMs) {
+        stopRecording(true);
+      }
+    }, 200);
+
+    recorder.start(1000);
+    setRecording(true);
   };
 
   const handleCapture = () => {
@@ -414,6 +459,18 @@ export function WeddingCamera({
             </div>
           )}
 
+          {!showingPreview && recording && mode === "video" && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm border border-red-500/40">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-sm font-mono text-ivory tabular-nums">
+                  {formatRecordingTime(recordingElapsedMs)} / {formatRecordingTime(maxVideoDurationMs)}
+                </span>
+              </div>
+              <p className="text-[10px] text-ivory/70">Max video length: {maxVideoDurationLabel}</p>
+            </div>
+          )}
+
           {!showingPreview && (
             <div className="absolute top-4 left-4 right-4 space-y-2 z-10">
               <div className="flex justify-between items-start gap-2">
@@ -428,18 +485,10 @@ export function WeddingCamera({
                   <Link
                     href={`/event/${eventId}/my-uploads`}
                     className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
+                    aria-label="My uploads"
                   >
                     <FolderOpen className="w-5 h-5" />
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFacingMode((f) => (f === "user" ? "environment" : "user"))
-                    }
-                    className="p-2.5 rounded-full bg-black/40 text-ivory backdrop-blur-sm"
-                  >
-                    <FlipHorizontal className="w-5 h-5" />
-                  </button>
                 </div>
               </div>
             </div>
@@ -495,20 +544,25 @@ export function WeddingCamera({
                 onChange={(e) => setSegment(e.target.value as EventSegment)}
                 className="w-full py-2 text-sm bg-white/10 text-ivory border-white/10 rounded-xl"
               />
-              <div className="flex items-center justify-center gap-4 sm:gap-6">
+              <div className="flex items-end justify-center gap-3 sm:gap-5">
                 <button
                   type="button"
                   onClick={() => setMode("photo")}
-                  className={`p-2 rounded-full touch-target ${mode === "photo" ? "text-champagne" : "text-ivory/50"}`}
+                  className={`flex flex-col items-center gap-1 touch-target pb-1 ${
+                    mode === "photo" ? "text-champagne" : "text-ivory/50"
+                  }`}
+                  aria-label="Photo mode"
                 >
                   <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-[10px] font-medium">Photo</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleCapture}
-                  className={`rounded-full border-4 flex items-center justify-center active:scale-95 transition-transform touch-target w-16 h-16 sm:w-[72px] sm:h-[72px] ${
+                  className={`rounded-full border-4 flex items-center justify-center active:scale-95 transition-transform touch-target w-16 h-16 sm:w-[72px] sm:h-[72px] mb-1 ${
                     recording ? "border-red-500 bg-red-500/20" : "border-ivory bg-white/10"
                   }`}
+                  aria-label={mode === "video" ? "Record video" : "Take photo"}
                 >
                   <div
                     className={`rounded-full ${
@@ -523,9 +577,33 @@ export function WeddingCamera({
                 <button
                   type="button"
                   onClick={() => setMode("video")}
-                  className={`p-2 rounded-full touch-target ${mode === "video" ? "text-champagne" : "text-ivory/50"}`}
+                  className={`flex flex-col items-center gap-1 touch-target pb-1 ${
+                    mode === "video" ? "text-champagne" : "text-ivory/50"
+                  }`}
+                  aria-label="Video mode"
                 >
                   <Video className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-[10px] font-medium">Video</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFacingMode((f) => (f === "user" ? "environment" : "user"))
+                  }
+                  aria-label={
+                    facingMode === "user"
+                      ? "Switch to back camera"
+                      : "Switch to front camera"
+                  }
+                  title="Flip camera"
+                  className="flex flex-col items-center gap-1 touch-target pb-0.5"
+                >
+                  <span className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-champagne/30 text-champagne ring-2 ring-champagne shadow-[0_0_12px_rgba(201,169,98,0.35)] backdrop-blur-sm active:scale-95 transition-transform">
+                    <SwitchCamera className="w-6 h-6 sm:w-7 sm:h-7" strokeWidth={2.25} />
+                  </span>
+                  <span className="text-[10px] font-semibold text-champagne">
+                    {facingMode === "user" ? "Back" : "Selfie"}
+                  </span>
                 </button>
               </div>
             </div>
