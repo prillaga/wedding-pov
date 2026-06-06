@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
 import { filterSlideshowPhotos } from "@/lib/slideshow-photos";
+import { countUniqueGuests } from "@/lib/highlight-reel";
 import { usePresentationControls } from "@/hooks/usePresentationControls";
 import type { SlideshowIntroOutro, SlideshowStyle, Upload } from "@/types";
 import { Monitor, Play } from "lucide-react";
@@ -44,6 +45,7 @@ export function PresentationSlideshow({
 }: PresentationSlideshowProps) {
   const router = useRouter();
   const photoCount = useMemo(() => filterSlideshowPhotos(uploads).length, [uploads]);
+  const guestCount = useMemo(() => countUniqueGuests(filterSlideshowPhotos(uploads)), [uploads]);
   const {
     containerRef,
     controlsVisible,
@@ -106,8 +108,8 @@ export function PresentationSlideshow({
             {!loading && (
               <p className="text-ivory/40 text-xs">
                 {photoCount > 0
-                  ? `${photoCount} photo${photoCount === 1 ? "" : "s"} ready to play`
-                  : "No guest photos yet — sample photos will appear after you join and upload"}
+                  ? `${guestCount} guest${guestCount === 1 ? "" : "s"} · ${photoCount} photo${photoCount === 1 ? "" : "s"} from every POV`
+                  : "Waiting for guest uploads from any device…"}
               </p>
             )}
             <p className="text-ivory/30 text-xs">Tap anywhere for playback controls</p>

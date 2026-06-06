@@ -1,6 +1,6 @@
 import { normalizeEventId } from "@/lib/demo-event";
-import type { Upload, UploadStatus } from "@/types";
-import { head, put } from "@vercel/blob";
+import type { Upload } from "@/types";
+import { head, list, put } from "@vercel/blob";
 import { getCloudStorageKind, isCloudStorageConfigured } from "./event-store";
 
 const BLOB_PREFIX = "wedding-pov/events/";
@@ -15,8 +15,16 @@ function photosIndexPath(eventId: string): string {
   return `${BLOB_PREFIX}${normalizeEventId(eventId)}/photos-index.json`;
 }
 
+function photoMetaPath(eventId: string, photoId: string): string {
+  return `${BLOB_PREFIX}${normalizeEventId(eventId)}/photos/${photoId}.json`;
+}
+
 function photoMediaPath(eventId: string, photoId: string, ext: string): string {
   return `${BLOB_PREFIX}${normalizeEventId(eventId)}/media/${photoId}.${ext}`;
+}
+
+function photosListPrefix(eventId: string): string {
+  return `${BLOB_PREFIX}${normalizeEventId(eventId)}/photos/`;
 }
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; contentType: string; ext: string } {
@@ -39,7 +47,7 @@ function metaToUpload(meta: StoredPhotoMeta): Upload {
   };
 }
 
-async function readPhotosIndex(eventId: string): Promise<StoredPhotoMeta[]> {
+async function readLegacyPhotosIndex(eventId: string): Promise<StoredPhotoMeta[]> {
   if (!hasBlob()) return [];
   try {
     const meta = await head(photosIndexPath(eventId), {
@@ -55,10 +63,56 @@ async function readPhotosIndex(eventId: string): Promise<StoredPhotoMeta[]> {
   }
 }
 
-async function writePhotosIndex(eventId: string, photos: StoredPhotoMeta[]): Promise<boolean> {
+async function readPhotoMetaFile(url: string): Promise<StoredPhotoMeta | null> {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as StoredPhotoMeta;
+  } catch {
+    return null;
+  }
+}
+
+async function listPhotoMetaFiles(eventId: string): Promise<StoredPhotoMeta[]> {
+  if (!hasBlob()) return [];
+
+  const id = normalizeEventId(eventId);
+  if (!id) return [];
+
+  try {
+    const { blobs } = await list({
+      prefix: photosListPrefix(id),
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    const jsonBlobs = blobs.filter(
+      (blob) =>
+        blob.pathname.endsWith(".json") &&
+        !blob.pathname.endsWith("photos-index.json")
+    );
+
+    const metas = await Promise.all(jsonBlobs.map((blob) => readPhotoMetaFile(blob.url)));
+    return metas.filter((meta): meta is StoredPhotoMeta => Boolean(meta?.id));
+  } catch {
+    return [];
+  }
+}
+
+function mergePhotoMeta(entries: StoredPhotoMeta[]): StoredPhotoMeta[] {
+  const byId = new Map<string, StoredPhotoMeta>();
+  for (const entry of entries) {
+    if (!entry.id || entry.status === "removed") continue;
+    byId.set(entry.id, entry);
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+async function writePhotoMeta(eventId: string, meta: StoredPhotoMeta): Promise<boolean> {
   if (!hasBlob()) return false;
   try {
-    await put(photosIndexPath(eventId), JSON.stringify(photos), {
+    await put(photoMetaPath(eventId, meta.id), JSON.stringify(meta), {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
       addRandomSuffix: false,
@@ -74,8 +128,12 @@ async function writePhotosIndex(eventId: string, photos: StoredPhotoMeta[]): Pro
 export { isCloudStorageConfigured, getCloudStorageKind };
 
 export async function listPhotosFromCloud(eventId: string): Promise<Upload[]> {
-  const index = await readPhotosIndex(eventId);
-  return index.map(metaToUpload);
+  const [fromFiles, fromLegacyIndex] = await Promise.all([
+    listPhotoMetaFiles(eventId),
+    readLegacyPhotosIndex(eventId),
+  ]);
+
+  return mergePhotoMeta([...fromLegacyIndex, ...fromFiles]).map(metaToUpload);
 }
 
 export async function addPhotoToCloud(upload: Upload): Promise<StoredPhotoMeta | null> {
@@ -84,40 +142,23 @@ export async function addPhotoToCloud(upload: Upload): Promise<StoredPhotoMeta |
   const id = normalizeEventId(upload.eventId);
   if (!id || !upload.imageData) return null;
 
-  if (upload.imageData.startsWith("http")) {
-    const meta: StoredPhotoMeta = {
-      id: upload.id,
-      eventId: id,
-      guestId: upload.guestId,
-      guestName: upload.guestName,
-      caption: upload.caption,
-      segment: upload.segment,
-      filter: upload.filter,
-      isVideo: upload.isVideo,
-      status: upload.status,
-      isExtra: upload.isExtra,
-      slotLocked: upload.slotLocked,
-      createdAt: upload.createdAt,
-      imageUrl: upload.imageData,
-    };
-    const index = await readPhotosIndex(id);
-    const next = [meta, ...index.filter((p) => p.id !== upload.id)];
-    const ok = await writePhotosIndex(id, next);
-    return ok ? meta : null;
-  }
+  let imageUrl = upload.imageData;
 
-  const { buffer, contentType, ext } = dataUrlToBuffer(upload.imageData);
-  if (buffer.length > 4.5 * 1024 * 1024) {
-    throw new Error("Photo too large for cloud upload");
-  }
+  if (!upload.imageData.startsWith("http")) {
+    const { buffer, contentType, ext } = dataUrlToBuffer(upload.imageData);
+    if (buffer.length > 4.5 * 1024 * 1024) {
+      throw new Error("Photo too large for cloud upload");
+    }
 
-  const blob = await put(photoMediaPath(id, upload.id, ext), buffer, {
-    access: "public",
-    token: process.env.BLOB_READ_WRITE_TOKEN,
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType,
-  });
+    const blob = await put(photoMediaPath(id, upload.id, ext), buffer, {
+      access: "public",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType,
+    });
+    imageUrl = blob.url;
+  }
 
   const meta: StoredPhotoMeta = {
     id: upload.id,
@@ -132,12 +173,10 @@ export async function addPhotoToCloud(upload: Upload): Promise<StoredPhotoMeta |
     isExtra: upload.isExtra,
     slotLocked: upload.slotLocked,
     createdAt: upload.createdAt,
-    imageUrl: blob.url,
+    imageUrl,
   };
 
-  const index = await readPhotosIndex(id);
-  const next = [meta, ...index.filter((p) => p.id !== upload.id)];
-  const ok = await writePhotosIndex(id, next);
+  const ok = await writePhotoMeta(id, meta);
   return ok ? meta : null;
 }
 
@@ -149,19 +188,15 @@ export async function updatePhotoInCloud(
   const id = normalizeEventId(eventId);
   if (!id) return false;
 
-  const index = await readPhotosIndex(id);
-  const idx = index.findIndex((p) => p.id === photoId);
-  if (idx < 0) return false;
+  const all = await listPhotoMetaFiles(id);
+  let existing = all.find((photo) => photo.id === photoId);
 
-  index[idx] = { ...index[idx], ...patch };
-  return writePhotosIndex(id, index);
-}
+  if (!existing) {
+    const legacy = await readLegacyPhotosIndex(id);
+    existing = legacy.find((photo) => photo.id === photoId);
+  }
 
-export async function replacePhotoInCloud(
-  eventId: string,
-  photoId: string,
-  upload: Upload
-): Promise<StoredPhotoMeta | null> {
-  await updatePhotoInCloud(eventId, photoId, { status: "removed" });
-  return addPhotoToCloud({ ...upload, id: photoId, eventId: normalizeEventId(eventId) });
+  if (!existing) return false;
+
+  return writePhotoMeta(id, { ...existing, ...patch });
 }

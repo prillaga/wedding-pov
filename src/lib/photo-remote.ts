@@ -102,18 +102,15 @@ export function mergeEventPhotos(local: Upload[], remote: Upload[]): Upload[] {
   const byId = new Map<string, Upload>();
 
   for (const photo of remote) {
-    byId.set(photo.id, photo);
+    if (photo.status !== "removed") {
+      byId.set(photo.id, photo);
+    }
   }
 
   for (const photo of local) {
     if (photo.status === "removed") continue;
-    const existing = byId.get(photo.id);
-    if (!existing) {
+    if (!byId.has(photo.id)) {
       byId.set(photo.id, photo);
-      continue;
-    }
-    if (!existing.imageData && photo.imageData) {
-      byId.set(photo.id, { ...existing, imageData: photo.imageData });
     }
   }
 

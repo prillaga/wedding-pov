@@ -251,7 +251,7 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
         />
       )}
 
-      {tab === "highlights" && <HighlightsReel uploads={getApprovedUploads(eventId)} />}
+      {tab === "highlights" && <HighlightsReel eventId={eventId} />}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   mergeEventPhotos,
   syncLocalPhotosToCloud,
 } from "@/lib/photo-remote";
+import { orderSlideshowPhotosMixed } from "@/lib/highlight-reel";
 import type { Upload } from "@/types";
 
 const DEBUG = process.env.NODE_ENV === "development";
@@ -15,17 +16,14 @@ export function slideshowLog(message: string, data?: unknown): void {
   }
 }
 
-/** Approved visible photos — matches gallery; includes pending uploads awaiting review */
+/** Approved visible photos — mixed across guests for live slideshow rotation */
 export function filterSlideshowPhotos(uploads: Upload[]): Upload[] {
-  return uploads
-    .filter(
-      (u) =>
-        u.status !== "removed" &&
-        (u.status === "approved" || u.status === "pending" || u.status === "extra")
-    )
-    .sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+  const visible = uploads.filter(
+    (u) =>
+      u.status !== "removed" &&
+      (u.status === "approved" || u.status === "pending" || u.status === "extra")
+  );
+  return orderSlideshowPhotosMixed(visible);
 }
 
 export function getSlideshowPhotos(eventId: string): Upload[] {
@@ -60,11 +58,11 @@ export async function fetchSlideshowPhotos(eventId: string): Promise<Upload[]> {
     slideshowLog(`Loaded ${merged.length} slideshow photo(s) (${remote.length} from cloud)`, {
       eventId,
     });
-    void syncLocalPhotosToCloud(eventId, local);
+    void syncLocalPhotosToCloud(eventId, getApprovedUploads(eventId));
     return merged;
   }
 
-  void syncLocalPhotosToCloud(eventId, local);
+  void syncLocalPhotosToCloud(eventId, getApprovedUploads(eventId));
   return local;
 }
 
