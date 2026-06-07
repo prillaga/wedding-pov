@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
 import { cacheEventInSession, buildJoinPath } from "@/lib/event-bootstrap";
@@ -14,7 +14,7 @@ import {
 } from "@/lib/event-utils";
 import { resolveEventIdAlias } from "@/lib/public-events";
 import { getEvents } from "@/lib/store";
-import { Heart, QrCode, Settings } from "lucide-react";
+import { ChevronDown, Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -23,6 +23,7 @@ const QRScanner = dynamic(() => import("@/components/qr/QRScanner"), { ssr: fals
 export default function HomePage() {
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
+  const [showCodeEntry, setShowCodeEntry] = useState(false);
   const [eventCode, setEventCode] = useState("");
   const [manualError, setManualError] = useState("");
   const [joining, setJoining] = useState(false);
@@ -88,11 +89,12 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen-safe flex flex-col">
+    <main className="min-h-screen-safe flex flex-col luxury-page-bg">
       <section className="relative flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12 overflow-hidden safe-top">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-blush/60 blur-3xl" />
           <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-champagne-light/30 blur-3xl" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-[120px] opacity-[0.03] select-none">✿</div>
         </div>
 
         <motion.div
@@ -101,16 +103,15 @@ export default function HomePage() {
           transition={{ duration: 0.8 }}
           className="relative z-10 text-center max-w-md"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blush mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blush to-champagne/20 mb-6 luxury-shadow">
             <Heart className="w-8 h-8 text-champagne fill-champagne/30" />
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-charcoal leading-tight">
             {APP_NAME}
           </h1>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
-          <p className="text-sm text-warm-gray/90 mt-4 leading-relaxed">
-            Scan the QR code on your invitation, or enter your event code below to join and start
-            taking photos.
+          <p className="text-sm text-champagne/80 mt-2 font-medium tracking-wide">
+            One QR Code. Hundreds of Perspectives. One Beautiful Story.
           </p>
         </motion.div>
       </section>
@@ -122,41 +123,59 @@ export default function HomePage() {
           transition={{ delay: 0.4 }}
           className="max-w-md mx-auto space-y-4"
         >
-          <Button variant="gold" size="lg" className="w-full" onClick={() => setShowScanner(true)}>
+          <Button variant="gold" size="lg" className="w-full shadow-lg" onClick={() => setShowScanner(true)}>
             <QrCode className="w-5 h-5" />
             Scan Invitation QR Code
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-champagne/20" />
-            <span className="text-xs text-warm-gray">or</span>
-            <div className="flex-1 h-px bg-champagne/20" />
-          </div>
-
-          <div className="space-y-2">
-            <input
-              value={eventCode}
-              onChange={(e) => {
-                setEventCode(e.target.value);
-                setManualError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && void goToEvent(eventCode)}
-              placeholder="Event code (e.g. JJ2027), link, or event ID"
-              className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
+          <button
+            type="button"
+            onClick={() => setShowCodeEntry((v) => !v)}
+            className="w-full flex items-center justify-center gap-2 text-sm text-warm-gray hover:text-champagne transition-colors py-2"
+          >
+            Have an Event Code?
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${showCodeEntry ? "rotate-180" : ""}`}
             />
-            {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
-            <Button
-              variant="secondary"
-              className="w-full"
-              loading={joining}
-              onClick={() => void goToEvent(eventCode)}
-            >
-              Join with Code
-            </Button>
-          </div>
+          </button>
+
+          <AnimatePresence>
+            {showCodeEntry && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden space-y-2"
+              >
+                <input
+                  value={eventCode}
+                  onChange={(e) => {
+                    setEventCode(e.target.value);
+                    setManualError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && void goToEvent(eventCode)}
+                  placeholder="Event code (e.g. JJ2027), link, or event ID"
+                  className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40 luxury-shadow"
+                />
+                {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  loading={joining}
+                  onClick={() => void goToEvent(eventCode)}
+                >
+                  Join Event
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <p className="text-center text-xs text-warm-gray px-2 leading-relaxed">
+            No account needed — scan your invitation, add your name, and the camera opens instantly.
+          </p>
 
           <p className="text-center text-xs text-warm-gray">
-            Demo code:{" "}
+            Demo:{" "}
             <button
               type="button"
               onClick={() => void goToEvent(DEMO_EVENT_ID)}
@@ -164,10 +183,6 @@ export default function HomePage() {
             >
               {DEMO_EVENT_ID}
             </button>
-          </p>
-
-          <p className="text-center text-xs text-warm-gray px-2">
-            No account or setup needed — scan or enter a code, add your name, and the camera opens.
           </p>
 
           <Link

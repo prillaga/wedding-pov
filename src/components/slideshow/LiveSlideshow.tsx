@@ -77,9 +77,9 @@ function getTransitionVariants(style: SlideshowStyle) {
       };
     default:
       return {
-        initial: { opacity: 1 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
+        initial: { opacity: 0, scale: 1.02 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.98 },
       };
   }
 }
@@ -357,7 +357,7 @@ export function LiveSlideshow({
         : "rounded-[28px] aspect-[16/10] bg-charcoal luxury-shadow";
 
   return (
-    <div className={`relative overflow-hidden ${containerClass}`}>
+    <div className={`relative overflow-hidden slideshow-vignette ${containerClass}`}>
       {!externalAudioRef && musicSettings?.trackUrl && (
         <audio ref={audioRef} preload="auto" playsInline className="hidden" aria-hidden />
       )}
@@ -391,8 +391,8 @@ export function LiveSlideshow({
             animate={variants.animate}
             exit={variants.exit}
             transition={{
-              duration: style === "fade" ? 0.9 : style === "polaroid-drop" ? 0.9 : 1.2,
-              ease: [0.4, 0, 0.2, 1],
+              duration: style === "fade" ? 1.4 : style === "polaroid-drop" ? 0.9 : 1.2,
+              ease: [0.25, 0.1, 0.25, 1],
             }}
             className={`absolute inset-0 ${style === "polaroid-drop" ? "p-8 md:p-16 flex items-center justify-center" : ""}`}
           >
@@ -412,7 +412,15 @@ export function LiveSlideshow({
                 src={current.imageData}
                 alt={current.caption ?? "Wedding moment"}
                 className={`w-full object-cover ${
-                  style === "polaroid-drop" ? "aspect-square" : "h-full animate-kenburns"
+                  style === "polaroid-drop"
+                    ? "aspect-square"
+                    : `h-full ${
+                        style === "cinematic-pan"
+                          ? "animate-cinematic-pan"
+                          : style === "fade" || style === "zoom" || isImmersive
+                            ? "animate-kenburns"
+                            : ""
+                      }`
                 }`}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
@@ -455,20 +463,24 @@ export function LiveSlideshow({
                   : formatGuestNamePOV(current.guestName)
                 : "Wedding POV"}
             </h2>
-            {current.caption && !presentationMode && (
+            {(current.caption || presentationMode || displayMode) && (
               <p
-                className={`text-ivory/80 italic mt-2 ${
-                  displayMode ? "text-xl md:text-2xl" : "text-sm md:text-base"
+                className={`text-ivory/90 mt-2 font-serif ${
+                  displayMode
+                    ? "text-xl sm:text-2xl md:text-3xl italic"
+                    : presentationMode
+                      ? "text-base sm:text-lg md:text-xl italic"
+                      : "text-sm md:text-base italic"
                 }`}
               >
-                {current.caption}
+                {current.caption || getSegmentLabel(current.segment)}
               </p>
             )}
             {showTimestamp && (
               <p
                 className={`text-champagne/90 mt-2 ${
                   displayMode
-                    ? "text-lg sm:text-xl md:text-2xl"
+                    ? "text-lg sm:text-xl md:text-2xl tracking-wide"
                     : presentationMode
                       ? "text-sm sm:text-base md:text-lg"
                       : "text-xs"
@@ -490,8 +502,8 @@ export function LiveSlideshow({
         </div>
       )}
 
-      {/* Exit — presentation mode only, visible on tap */}
-      {presentationMode && showControls && onExit && (
+      {/* Exit — presentation mode only (hidden in TV display mode) */}
+      {presentationMode && !displayMode && showControls && onExit && (
         <motion.button
           type="button"
           initial={{ opacity: 0 }}
@@ -508,8 +520,8 @@ export function LiveSlideshow({
         </motion.button>
       )}
 
-      {/* Playback controls — always visible in embed; tap-to-show in presentation */}
-      {showControls && (
+      {/* Playback controls — hidden in TV display mode unless tapped */}
+      {showControls && !displayMode && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -623,7 +635,7 @@ export function LiveSlideshow({
         </motion.div>
       )}
 
-      {musicOn && musicSettings?.enabled && (musicSettings.trackUrl || musicSettings.trackName) && (
+      {musicOn && musicSettings?.enabled && (musicSettings.trackUrl || musicSettings.trackName) && !displayMode && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 text-ivory/60 text-xs backdrop-blur-sm max-w-[70%]">
           <Music className="w-3 h-3 shrink-0" />
           <span className="truncate">

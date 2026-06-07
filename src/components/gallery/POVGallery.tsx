@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { POVBadge } from "@/components/layout/PageHeader";
 import { PhotoSaveActions } from "@/components/photos/PhotoSaveActions";
+import { Button } from "@/components/ui/Button";
 import { GALLERY_SORT_OPTIONS } from "@/lib/constants";
 import { getEvent } from "@/lib/store";
-import { formatGuestNamePOV, getSegmentLabel } from "@/lib/utils";
+import { formatGuestNamePOV, formatRelativeTime, getSegmentLabel } from "@/lib/utils";
 import type { GallerySort, Upload } from "@/types";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronRight, X } from "lucide-react";
 
 interface POVGalleryProps {
   eventId: string;
@@ -67,6 +69,24 @@ function GalleryPhotoModal({
   );
 }
 
+function GalleryEmptyState({ eventId }: { eventId: string }) {
+  return (
+    <div className="luxury-glass rounded-[28px] border border-champagne/12 p-8 sm:p-12 text-center luxury-shadow">
+      <div className="text-4xl mb-4">📷</div>
+      <h2 className="font-serif text-2xl text-charcoal">No Memories Yet</h2>
+      <p className="text-sm text-warm-gray mt-2 leading-relaxed max-w-xs mx-auto">
+        Be the first guest to share a wedding moment.
+      </p>
+      <Link href={`/event/${eventId}/camera`} className="inline-block mt-5">
+        <Button variant="gold" size="lg">
+          <Camera className="w-5 h-5" />
+          Open Camera
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
 export function POVGallery({ eventId, uploads }: POVGalleryProps) {
   const [sort, setSort] = useState<GallerySort>("guest");
   const [expandedGuest, setExpandedGuest] = useState<string | null>(null);
@@ -87,11 +107,18 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
       map.set(u.guestName, list);
     });
     return [...map.entries()]
-      .map(([name, photos]) => ({
-        name,
-        photos: photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-        count: photos.filter((p) => !p.isExtra).length,
-      }))
+      .map(([name, photos]) => {
+        const sorted = photos.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        return {
+          name,
+          photos: sorted,
+          count: photos.filter((p) => !p.isExtra).length,
+          latestPhoto: sorted[0],
+          latestUpload: sorted[0]?.createdAt,
+        };
+      })
       .sort((a, b) => b.count - a.count);
   }, [active]);
 
@@ -109,71 +136,115 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
     }
   }, [active, sort]);
 
+  if (active.length === 0) {
+    return <GalleryEmptyState eventId={eventId} />;
+  }
+
   if (sort === "guest") {
     return (
       <>
         <div className="space-y-4">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {GALLERY_SORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setSort(opt.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-all ${
-                sort === opt.value ? "bg-champagne text-white" : "bg-blush text-warm-gray"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          {guestGroups.map((group, i) => {
-            const max = maxPhotos === "unlimited" ? null : maxPhotos;
-            const label = max ? `${group.count} / ${max} Photos` : `${group.count} Photos`;
-            const open = expandedGuest === group.name;
-
-            return (
-              <motion.div
-                key={group.name}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="rounded-2xl bg-white wedding-shadow border border-champagne/10 overflow-hidden"
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {GALLERY_SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSort(opt.value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-all ${
+                  sort === opt.value ? "bg-champagne text-white" : "bg-blush text-warm-gray"
+                }`}
               >
-                <button
-                  onClick={() => setExpandedGuest(open ? null : group.name)}
-                  className="w-full flex items-center justify-between p-4 text-left hover:bg-blush/30 transition-colors"
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {guestGroups.map((group, i) => {
+              const max = maxPhotos === "unlimited" ? null : maxPhotos;
+              const countLabel = max ? `${group.count} / ${max} Photos` : `${group.count} Photos`;
+              const open = expandedGuest === group.name;
+
+              return (
+                <motion.div
+                  key={group.name}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="rounded-[24px] bg-white/90 luxury-glass border border-champagne/12 overflow-hidden luxury-shadow"
                 >
-                  <div>
-                    <POVBadge name={group.name} size="md" />
-                    <p className="text-sm text-champagne mt-1 font-medium">{label}</p>
-                  </div>
-                  {open ? <ChevronDown className="w-5 h-5 text-warm-gray" /> : <ChevronRight className="w-5 h-5 text-warm-gray" />}
-                </button>
-                {open && (
-                  <div className="px-4 pb-4 grid grid-cols-3 gap-2">
-                    {group.photos.map((upload) => (
+                  <div className="flex items-stretch">
+                    {group.latestPhoto && (
                       <button
-                        key={upload.id}
                         type="button"
-                        onClick={() => setSelectedUpload(upload)}
-                        className="rounded-xl overflow-hidden aspect-square relative"
+                        onClick={() => setSelectedUpload(group.latestPhoto!)}
+                        className="shrink-0 w-24 sm:w-28 relative overflow-hidden"
                       >
-                        <img src={upload.imageData} alt="" className="w-full h-full object-cover" />
-                        {upload.isExtra && (
-                          <span className="absolute top-1 right-1 text-[8px] bg-charcoal/70 text-ivory px-1.5 py-0.5 rounded-full">
-                            Extra
-                          </span>
-                        )}
+                        <img
+                          src={group.latestPhoto.imageData}
+                          alt=""
+                          className="w-full h-full object-cover min-h-[100px]"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
                       </button>
-                    ))}
+                    )}
+
+                    <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
+                      <POVBadge name={group.name} size="md" />
+                      <p className="text-sm text-champagne mt-1.5 font-medium">{countLabel}</p>
+                      {group.latestUpload && (
+                        <p className="text-xs text-warm-gray mt-0.5">
+                          Latest Upload: {formatRelativeTime(group.latestUpload)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedGuest(open ? null : group.name)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-champagne to-champagne-light text-white text-xs font-medium shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          View POV
+                          {open ? (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
+
+                  <AnimatePresence>
+                    {open && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 grid grid-cols-3 gap-2 border-t border-champagne/10 pt-3">
+                          {group.photos.map((upload) => (
+                            <button
+                              key={upload.id}
+                              type="button"
+                              onClick={() => setSelectedUpload(upload)}
+                              className="rounded-xl overflow-hidden aspect-square relative"
+                            >
+                              <img src={upload.imageData} alt="" className="w-full h-full object-cover" />
+                              {upload.isExtra && (
+                                <span className="absolute top-1 right-1 text-[8px] bg-charcoal/70 text-ivory px-1.5 py-0.5 rounded-full">
+                                  Extra
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
 
         <AnimatePresence>
@@ -188,40 +259,42 @@ export function POVGallery({ eventId, uploads }: POVGalleryProps) {
   return (
     <>
       <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {GALLERY_SORT_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setSort(opt.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-all ${
-              sort === opt.value ? "bg-champagne text-white" : "bg-blush text-warm-gray"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {GALLERY_SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSort(opt.value)}
+              className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-all ${
+                sort === opt.value ? "bg-champagne text-white" : "bg-blush text-warm-gray"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {sortedFlat.map((upload, i) => (
-          <motion.button
-            key={upload.id}
-            type="button"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-            onClick={() => setSelectedUpload(upload)}
-            className="rounded-2xl overflow-hidden wedding-shadow bg-white text-left"
-          >
-            <img src={upload.imageData} alt="" className="w-full aspect-[4/5] object-cover" />
-            <div className="p-3">
-              <POVBadge name={upload.guestName} size="sm" />
-              {upload.caption && <p className="text-xs text-warm-gray mt-1 italic line-clamp-2">{upload.caption}</p>}
-              <p className="text-[10px] text-champagne/70 mt-1">{getSegmentLabel(upload.segment)}</p>
-            </div>
-          </motion.button>
-        ))}
-      </div>
+        <div className="grid grid-cols-2 gap-3">
+          {sortedFlat.map((upload, i) => (
+            <motion.button
+              key={upload.id}
+              type="button"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              onClick={() => setSelectedUpload(upload)}
+              className="rounded-2xl overflow-hidden wedding-shadow bg-white text-left"
+            >
+              <img src={upload.imageData} alt="" className="w-full aspect-[4/5] object-cover" />
+              <div className="p-3">
+                <POVBadge name={upload.guestName} size="sm" />
+                {upload.caption && (
+                  <p className="text-xs text-warm-gray mt-1 italic line-clamp-2">{upload.caption}</p>
+                )}
+                <p className="text-[10px] text-champagne/70 mt-1">{getSegmentLabel(upload.segment)}</p>
+              </div>
+            </motion.button>
+          ))}
+        </div>
       </div>
 
       <AnimatePresence>

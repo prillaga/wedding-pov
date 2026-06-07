@@ -122,7 +122,7 @@ export function CoupleJoinFlow({ event, startOnJoin = false }: CoupleJoinFlowPro
               onClick={handleJoin}
               loading={joining}
             >
-              Continue
+              Join Event
             </Button>
           </div>
         </div>

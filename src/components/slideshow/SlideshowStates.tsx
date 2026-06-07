@@ -1,32 +1,51 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Camera, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface SlideshowEmptyStateProps {
   displayMode?: boolean;
   fullscreen?: boolean;
+  cameraHref?: string;
 }
 
-export function SlideshowEmptyState({ displayMode, fullscreen }: SlideshowEmptyStateProps) {
+export function SlideshowEmptyState({ displayMode, fullscreen, cameraHref }: SlideshowEmptyStateProps) {
+  const isImmersive = displayMode || fullscreen;
+
   return (
     <div
       className={`flex flex-col items-center justify-center text-center px-8 ${
-        displayMode || fullscreen
+        isImmersive
           ? "h-screen bg-charcoal"
-          : "h-64 rounded-[28px] bg-gradient-to-br from-blush to-ivory border border-champagne/10"
+          : "h-64 sm:h-72 rounded-[28px] bg-gradient-to-br from-blush/80 to-ivory border border-champagne/10"
       }`}
     >
       <Sparkles
-        className={`mb-4 ${displayMode ? "w-10 h-10 text-champagne/40" : "w-8 h-8 text-champagne/50"}`}
+        className={`mb-4 ${isImmersive ? "w-10 h-10 text-champagne/40" : "w-8 h-8 text-champagne/50"}`}
       />
       <p
-        className={`font-serif ${displayMode ? "text-2xl text-ivory/70" : "text-lg text-charcoal"}`}
+        className={`font-serif ${isImmersive ? "text-2xl text-ivory/70" : "text-xl text-charcoal"}`}
       >
-        Waiting for guest photos…
+        {isImmersive ? "Waiting for guest photos…" : "No Memories Yet"}
       </p>
-      <p className={`mt-2 max-w-xs leading-relaxed ${displayMode ? "text-ivory/40 text-sm" : "text-warm-gray text-xs"}`}>
-        As guests upload moments, they&apos;ll appear here automatically — no refresh needed.
+      <p
+        className={`mt-2 max-w-xs leading-relaxed ${
+          isImmersive ? "text-ivory/40 text-sm" : "text-warm-gray text-sm"
+        }`}
+      >
+        {isImmersive
+          ? "As guests upload moments, they'll appear here automatically — no refresh needed."
+          : "Be the first guest to share a wedding moment."}
       </p>
+      {cameraHref && !isImmersive && (
+        <Link href={cameraHref} className="mt-5">
+          <Button variant="gold" size="md">
+            <Camera className="w-4 h-4" />
+            Open Camera
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

@@ -24,13 +24,14 @@ const config: Config = {
       },
       animation: {
         "fade-in": "fadeIn 0.8s ease-out forwards",
-        kenburns: "kenburns 8s ease-in-out infinite alternate",
+        kenburns: "kenburns 14s ease-in-out infinite alternate",
       },
       keyframes: {
         fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
         kenburns: {
-          "0%": { transform: "scale(1)" },
-          "100%": { transform: "scale(1.08)" },
+          "0%": { transform: "scale(1) translate(0, 0)" },
+          "50%": { transform: "scale(1.06) translate(-1%, -0.5%)" },
+          "100%": { transform: "scale(1.12) translate(-2%, -1%)" },
         },
       },
     },

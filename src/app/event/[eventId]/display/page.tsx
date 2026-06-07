@@ -36,7 +36,7 @@ export default function DisplayModePage() {
       loading={loading}
       eventLoading={eventLoading}
       displayMode
-      style={event?.slideshow.style ?? "fade"}
+      style={event?.slideshow.style ?? "cinematic-pan"}
       interval={event?.slideshow.transitionDuration ?? 5000}
       showTimestamp={event?.slideshow.showTimestamp ?? true}
       showPhotoCount={event?.slideshow.showPhotoCount ?? true}

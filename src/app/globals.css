@@ -103,3 +103,39 @@ body {
 .animate-shimmer {
   animation: shimmer 3s ease-in-out infinite;
 }
+
+@keyframes kenburns {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.06) translate(-1%, -0.5%); }
+  100% { transform: scale(1.12) translate(-2%, -1%); }
+}
+
+@keyframes cinematic-pan {
+  0% { transform: scale(1.08) translate(2%, 0); }
+  100% { transform: scale(1.15) translate(-2%, -1%); }
+}
+
+.animate-cinematic-pan {
+  animation: cinematic-pan 12s ease-in-out infinite alternate;
+}
+
+.luxury-gold-border {
+  border-image: linear-gradient(135deg, rgba(201, 169, 98, 0.4), rgba(232, 213, 163, 0.2), rgba(201, 169, 98, 0.4)) 1;
+}
+
+.luxury-invitation-bg {
+  background-color: #fffef9;
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% -20%, rgba(201, 169, 98, 0.12), transparent),
+    radial-gradient(ellipse 70% 50% at 100% 30%, rgba(245, 230, 224, 0.6), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 70%, rgba(232, 213, 163, 0.3), transparent),
+    url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a962' fill-opacity='0.03'%3E%3Cpath d='M40 36c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0-16c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0 32c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.slideshow-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.35) 100%);
+}

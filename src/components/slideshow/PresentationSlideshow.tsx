@@ -82,6 +82,21 @@ export function PresentationSlideshow({
     }
   }, [hasStarted, music, tryPlayMusic]);
 
+  useEffect(() => {
+    if (displayMode && launchReady && !hasStarted) {
+      audioUnlockedRef.current = true;
+      tryPlayMusic();
+      void startPresentation();
+    }
+  }, [displayMode, launchReady, hasStarted, startPresentation, tryPlayMusic]);
+
+  useEffect(() => {
+    if (displayMode && launchReady && !hasStarted) {
+      audioUnlockedRef.current = true;
+      void startPresentation();
+    }
+  }, [displayMode, launchReady, hasStarted, startPresentation]);
+
   const handleStart = () => {
     if (!launchReady) return;
     audioUnlockedRef.current = true;
@@ -99,7 +114,7 @@ export function PresentationSlideshow({
     }
   };
 
-  const showLaunch = !hasStarted;
+  const showLaunch = !hasStarted && !displayMode;
 
   return (
     <div
