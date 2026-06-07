@@ -311,8 +311,25 @@ export const DEFAULT_SLIDESHOW = {
     subtitle: "For Celebrating With Us",
     line3: "John & Jane",
   },
-  music: { enabled: false, autoFade: true, loop: true },
+  music: {
+    enabled: false,
+    autoFade: true,
+    loop: true,
+    syncToBeat: false,
+    bpm: 120,
+    beatsPerSlide: 4 as const,
+    volume: 0.75,
+  },
 };
+
+export const SLIDESHOW_BEATS_PER_SLIDE_OPTIONS: {
+  value: 2 | 4 | 8;
+  label: string;
+}[] = [
+  { value: 2, label: "2 beats / slide" },
+  { value: 4, label: "4 beats / slide" },
+  { value: 8, label: "8 beats / slide" },
+];
 
 export const LIMIT_TYPE_LABELS: Record<string, string> = {
   total: "Per Guest Total",

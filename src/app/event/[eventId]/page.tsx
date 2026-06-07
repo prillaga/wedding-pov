@@ -146,6 +146,7 @@ export default function EventHomePage() {
                 outro={event.slideshow?.outro}
                 showTimestamp={event.slideshow?.showTimestamp}
                 showGuestNames={event.slideshow?.showGuestNames}
+                music={event.slideshow?.music}
                 musicEnabled={event.slideshow?.music?.enabled}
                 loop
                 autoPlay

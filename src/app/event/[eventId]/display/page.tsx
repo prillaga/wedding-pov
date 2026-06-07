@@ -41,6 +41,7 @@ export default function DisplayModePage() {
       intro={event?.slideshow.intro}
       outro={event?.slideshow.outro}
       musicEnabled={event?.slideshow.music.enabled}
+      music={event?.slideshow.music}
       exitHref={`/event/${eventId}`}
     />
   );

@@ -10,8 +10,9 @@ import {
   prevSlideIndex,
   slideshowLog,
 } from "@/lib/slideshow-photos";
+import { useSlideshowMusic } from "@/hooks/useSlideshowMusic";
 import { formatGuestNamePOV, formatGuestNamePOVUpper, formatTime, getSegmentLabel } from "@/lib/utils";
-import type { SlideshowIntroOutro, SlideshowStyle, Upload } from "@/types";
+import type { SlideshowIntroOutro, SlideshowMusicSettings, SlideshowStyle, Upload } from "@/types";
 import {
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,8 @@ interface LiveSlideshowProps {
   onExit?: () => void;
   intro?: SlideshowIntroOutro;
   outro?: SlideshowIntroOutro;
+  music?: SlideshowMusicSettings;
+  /** @deprecated Use music.enabled */
   musicEnabled?: boolean;
   loading?: boolean;
   loop?: boolean;
@@ -127,6 +130,7 @@ export function LiveSlideshow({
   onExit,
   intro,
   outro,
+  music,
   musicEnabled = false,
   loading = false,
   loop = true,
@@ -140,7 +144,20 @@ export function LiveSlideshow({
     intro && photos.length > 0 ? "intro" : "slides"
   );
   const [playing, setPlaying] = useState(autoPlay);
-  const [musicOn, setMusicOn] = useState(musicEnabled);
+  const musicSettings: SlideshowMusicSettings | undefined =
+    music ??
+    (musicEnabled
+      ? {
+          enabled: true,
+          autoFade: true,
+          loop: true,
+          syncToBeat: false,
+          bpm: 120,
+          beatsPerSlide: 4 as const,
+          volume: 0.75,
+        }
+      : undefined);
+  const [musicOn, setMusicOn] = useState(musicSettings?.enabled ?? musicEnabled);
   const indexRef = useRef(index);
   const photosRef = useRef(photos);
 
@@ -240,9 +257,16 @@ export function LiveSlideshow({
     });
   }, [phase, log]);
 
-  // Auto-advance timer — stable deps, uses refs for latest state
+  const { audioRef, beatSyncActive, beatSlideMs, hasTrack } = useSlideshowMusic({
+    music: musicSettings,
+    musicOn,
+    playing,
+    phase,
+    onBeatAdvance: goNext,
+  });
+
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || beatSyncActive) return;
 
     const duration =
       phase === "intro" || phase === "outro"
@@ -261,7 +285,25 @@ export function LiveSlideshow({
       clearInterval(timer);
       log("Timer cleared");
     };
-  }, [playing, interval, phase, photos.length, goNext, log]);
+  }, [playing, beatSyncActive, interval, phase, photos.length, goNext, log]);
+
+  useEffect(() => {
+    if (!playing || !beatSyncActive || hasTrack) return;
+
+    log("Beat-sync timer started", { beatSlideMs });
+
+    const timer = setInterval(() => {
+      goNext();
+    }, beatSlideMs);
+
+    return () => clearInterval(timer);
+  }, [playing, beatSyncActive, hasTrack, beatSlideMs, goNext, log]);
+
+  useEffect(() => {
+    if (musicSettings?.enabled) {
+      setMusicOn(true);
+    }
+  }, [musicSettings?.enabled, musicSettings?.trackUrl]);
 
   useEffect(() => {
     log("Slide changed", {
@@ -312,6 +354,9 @@ export function LiveSlideshow({
 
   return (
     <div className={`relative overflow-hidden ${containerClass}`}>
+      {musicSettings?.trackUrl && (
+        <audio ref={audioRef} preload="auto" playsInline className="hidden" aria-hidden />
+      )}
       <AnimatePresence mode="wait">
         {phase === "intro" && intro ? (
           <motion.div
@@ -543,7 +588,8 @@ export function LiveSlideshow({
                 type="button"
                 onClick={() => setMusicOn(!musicOn)}
                 aria-label="Toggle music"
-                className="p-2 rounded-full bg-black/40 text-ivory/80 backdrop-blur-sm hover:bg-black/60"
+                disabled={!musicSettings?.trackUrl && !musicSettings?.enabled}
+                className="p-2 rounded-full bg-black/40 text-ivory/80 backdrop-blur-sm hover:bg-black/60 disabled:opacity-40"
               >
                 {musicOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
@@ -560,9 +606,15 @@ export function LiveSlideshow({
         </motion.div>
       )}
 
-      {musicOn && !presentationMode && (
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 text-ivory/60 text-xs backdrop-blur-sm">
-          <Music className="w-3 h-3" /> Wedding music
+      {musicOn && musicSettings?.enabled && (musicSettings.trackUrl || musicSettings.trackName) && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 text-ivory/60 text-xs backdrop-blur-sm max-w-[70%]">
+          <Music className="w-3 h-3 shrink-0" />
+          <span className="truncate">
+            {musicSettings.trackName ?? "Wedding music"}
+            {musicSettings.syncToBeat && musicSettings.bpm
+              ? ` · ${musicSettings.bpm} BPM`
+              : ""}
+          </span>
         </div>
       )}
 

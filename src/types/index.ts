@@ -179,11 +179,21 @@ export interface SlideshowIntroOutro {
   date?: string;
 }
 
+export type SlideshowBeatsPerSlide = 2 | 4 | 8;
+
 export interface SlideshowMusicSettings {
   enabled: boolean;
   autoFade: boolean;
   loop: boolean;
   trackName?: string;
+  /** Public URL (Vercel Blob) or local data URL for the audio file */
+  trackUrl?: string;
+  /** Advance slides on musical beats instead of fixed duration */
+  syncToBeat?: boolean;
+  /** Beats per minute — auto-detected on upload or set manually */
+  bpm?: number;
+  beatsPerSlide?: SlideshowBeatsPerSlide;
+  volume?: number;
 }
 
 export interface SlideshowConfig {

@@ -6,7 +6,7 @@ import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
 import { filterSlideshowPhotos } from "@/lib/slideshow-photos";
 import { countUniqueGuests } from "@/lib/highlight-reel";
 import { usePresentationControls } from "@/hooks/usePresentationControls";
-import type { SlideshowIntroOutro, SlideshowStyle, Upload } from "@/types";
+import type { SlideshowIntroOutro, SlideshowMusicSettings, SlideshowStyle, Upload } from "@/types";
 import { Monitor, Play } from "lucide-react";
 
 interface PresentationSlideshowProps {
@@ -21,6 +21,8 @@ interface PresentationSlideshowProps {
   showGuestNames?: boolean;
   intro?: SlideshowIntroOutro;
   outro?: SlideshowIntroOutro;
+  music?: SlideshowMusicSettings;
+  /** @deprecated Use music.enabled */
   musicEnabled?: boolean;
   /** TV / projector mode — larger typography, reception hint */
   displayMode?: boolean;
@@ -39,6 +41,7 @@ export function PresentationSlideshow({
   showGuestNames,
   intro,
   outro,
+  music,
   musicEnabled,
   displayMode = false,
   exitHref,
@@ -126,7 +129,8 @@ export function PresentationSlideshow({
           showGuestNames={showGuestNames}
           intro={intro}
           outro={outro}
-          musicEnabled={musicEnabled}
+          music={music}
+          musicEnabled={musicEnabled ?? music?.enabled}
           presentationMode
           displayMode={displayMode}
           controlsVisible={controlsVisible}
