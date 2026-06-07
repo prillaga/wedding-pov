@@ -10,6 +10,8 @@ interface UseSlideshowMusicOptions {
   playing: boolean;
   phase: "intro" | "slides" | "outro";
   onBeatAdvance: () => void;
+  /** Use parent-owned audio element (for unlock on tap-to-start). */
+  externalAudioRef?: React.RefObject<HTMLAudioElement | null>;
 }
 
 export function useSlideshowMusic({
@@ -18,8 +20,11 @@ export function useSlideshowMusic({
   playing,
   phase,
   onBeatAdvance,
+  externalAudioRef,
 }: UseSlideshowMusicOptions) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const internalAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = externalAudioRef ?? internalAudioRef;
+  const loadedUrlRef = useRef<string | null>(null);
   const lastSlideBeatRef = useRef(-1);
   const onBeatAdvanceRef = useRef(onBeatAdvance);
 
@@ -27,36 +32,53 @@ export function useSlideshowMusic({
 
   const hasTrack = Boolean(music?.trackUrl);
   const beatSyncActive = Boolean(
-    music?.enabled &&
-      musicOn &&
-      music.syncToBeat &&
-      music.bpm &&
-      phase === "slides"
+    music?.enabled && musicOn && music.syncToBeat && music.bpm && phase === "slides"
   );
 
   const beatSlideMs = beatIntervalMs(music?.bpm ?? 120, music?.beatsPerSlide ?? 4);
+
+  const applyTrack = useCallback(
+    (audio: HTMLAudioElement) => {
+      if (!music?.trackUrl) return;
+      if (loadedUrlRef.current !== music.trackUrl) {
+        audio.src = music.trackUrl;
+        loadedUrlRef.current = music.trackUrl;
+        audio.load();
+        lastSlideBeatRef.current = -1;
+      }
+      audio.loop = music.loop ?? true;
+      audio.volume = music.volume ?? 0.75;
+    },
+    [music]
+  );
+
+  const playMusicFromGesture = useCallback(async (): Promise<boolean> => {
+    const audio = audioRef.current;
+    if (!audio || !music?.trackUrl || !music.enabled) return false;
+    applyTrack(audio);
+    try {
+      await audio.play();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [applyTrack, audioRef, music]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !music?.trackUrl) return;
 
-    if (audio.src !== music.trackUrl) {
-      audio.src = music.trackUrl;
-      audio.load();
-      lastSlideBeatRef.current = -1;
-    }
+    applyTrack(audio);
 
-    audio.loop = music.loop ?? true;
-    audio.volume = music.volume ?? 0.75;
-
-    const shouldPlay = playing && musicOn && music.enabled && phase === "slides";
+    const shouldPlay =
+      playing && musicOn && music.enabled && (phase === "slides" || phase === "intro");
 
     if (shouldPlay) {
       void audio.play().catch(() => undefined);
     } else if (!audio.paused) {
       audio.pause();
     }
-  }, [music, musicOn, playing, phase]);
+  }, [applyTrack, audioRef, music, musicOn, playing, phase]);
 
   useEffect(() => {
     if (!beatSyncActive || !hasTrack) return;
@@ -81,7 +103,7 @@ export function useSlideshowMusic({
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     return () => audio.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [beatSyncActive, hasTrack, music]);
+  }, [beatSyncActive, hasTrack, music, audioRef]);
 
   useEffect(() => {
     if (phase !== "slides") {
@@ -104,13 +126,14 @@ export function useSlideshowMusic({
     }
     audio.pause();
     audio.volume = music.volume ?? 0.75;
-  }, [music]);
+  }, [audioRef, music]);
 
   return {
-    audioRef,
+    audioRef: internalAudioRef,
     beatSyncActive,
     beatSlideMs,
     hasTrack,
     fadeOut,
+    playMusicFromGesture,
   };
 }

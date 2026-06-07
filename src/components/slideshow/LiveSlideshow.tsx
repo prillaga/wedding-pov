@@ -42,6 +42,8 @@ interface LiveSlideshowProps {
   music?: SlideshowMusicSettings;
   /** @deprecated Use music.enabled */
   musicEnabled?: boolean;
+  /** Shared audio element unlocked by tap-to-start in presentation mode */
+  externalAudioRef?: React.RefObject<HTMLAudioElement | null>;
   loading?: boolean;
   loop?: boolean;
   debug?: boolean;
@@ -132,6 +134,7 @@ export function LiveSlideshow({
   outro,
   music,
   musicEnabled = false,
+  externalAudioRef,
   loading = false,
   loop = true,
   debug = process.env.NODE_ENV === "development",
@@ -263,6 +266,7 @@ export function LiveSlideshow({
     playing,
     phase,
     onBeatAdvance: goNext,
+    externalAudioRef,
   });
 
   useEffect(() => {
@@ -354,7 +358,7 @@ export function LiveSlideshow({
 
   return (
     <div className={`relative overflow-hidden ${containerClass}`}>
-      {musicSettings?.trackUrl && (
+      {!externalAudioRef && musicSettings?.trackUrl && (
         <audio ref={audioRef} preload="auto" playsInline className="hidden" aria-hidden />
       )}
       <AnimatePresence mode="wait">
@@ -558,6 +562,19 @@ export function LiveSlideshow({
                   className="p-3 md:p-4 rounded-full bg-black/50 text-ivory/90 backdrop-blur-md border border-white/10 hover:bg-black/70"
                 >
                   <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+              )}
+              {musicSettings?.trackUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMusicOn((on) => !on);
+                  }}
+                  aria-label="Toggle music"
+                  className="p-3 md:p-4 rounded-full bg-black/50 text-ivory/90 backdrop-blur-md border border-white/10 hover:bg-black/70"
+                >
+                  {musicOn ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
                 </button>
               )}
             </>

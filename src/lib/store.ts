@@ -271,7 +271,7 @@ function cacheEventLocally(event: WeddingEvent): WeddingEvent {
   return event;
 }
 
-/** Resolve event on any device — local cache, built-in demo, then cloud API. */
+/** Resolve event on any device — merge cloud config (incl. music) with local cache. */
 export async function loadEventForGuest(eventId: string): Promise<WeddingEvent | null> {
   const id = normalizeEventId(eventId);
   if (!id) return null;
@@ -287,12 +287,15 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   }
 
   const local = getEvents().find((e) => e.id === id);
-  if (local) return local;
-
   const remote = await fetchRemoteEvent(id);
+
+  if (remote && local) {
+    return cacheEventLocally(mergeGuestEventConfig(local, remote));
+  }
   if (remote) {
     return cacheEventLocally(remote);
   }
+  if (local) return local;
 
   if (isDemoEventId(id)) {
     return cacheEventLocally(getHardcodedDemoEvent());
@@ -304,6 +307,24 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   }
 
   return null;
+}
+
+function mergeGuestEventConfig(local: WeddingEvent, remote: WeddingEvent): WeddingEvent {
+  return migrateEvent({
+    ...local,
+    ...remote,
+    slideshow: {
+      ...local.slideshow,
+      ...remote.slideshow,
+      intro: { ...local.slideshow.intro, ...remote.slideshow.intro },
+      outro: { ...local.slideshow.outro, ...remote.slideshow.outro },
+      music: {
+        ...DEFAULT_SLIDESHOW.music,
+        ...(local.slideshow?.music ?? {}),
+        ...(remote.slideshow?.music ?? {}),
+      },
+    },
+  });
 }
 
 export function saveEvent(event: WeddingEvent): void {

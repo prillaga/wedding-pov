@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
 import { filterSlideshowPhotos } from "@/lib/slideshow-photos";
 import { countUniqueGuests } from "@/lib/highlight-reel";
 import { usePresentationControls } from "@/hooks/usePresentationControls";
 import type { SlideshowIntroOutro, SlideshowMusicSettings, SlideshowStyle, Upload } from "@/types";
-import { Monitor, Play } from "lucide-react";
+import { Monitor, Music, Play } from "lucide-react";
 
 interface PresentationSlideshowProps {
   eventId: string;
@@ -47,8 +47,10 @@ export function PresentationSlideshow({
   exitHref,
 }: PresentationSlideshowProps) {
   const router = useRouter();
+  const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
   const photoCount = useMemo(() => filterSlideshowPhotos(uploads).length, [uploads]);
   const guestCount = useMemo(() => countUniqueGuests(filterSlideshowPhotos(uploads)), [uploads]);
+  const musicSettings = music ?? (musicEnabled ? { enabled: true } : undefined);
   const {
     containerRef,
     controlsVisible,
@@ -58,7 +60,18 @@ export function PresentationSlideshow({
     exitFullscreen,
   } = usePresentationControls({ autoHideMs: 3000 });
 
+  const handleStart = () => {
+    if (music?.enabled && music.trackUrl && sharedAudioRef.current) {
+      sharedAudioRef.current.src = music.trackUrl;
+      sharedAudioRef.current.loop = music.loop ?? true;
+      sharedAudioRef.current.volume = music.volume ?? 0.75;
+      void sharedAudioRef.current.play().catch(() => undefined);
+    }
+    void startPresentation();
+  };
+
   const handleExit = async () => {
+    sharedAudioRef.current?.pause();
     await exitFullscreen();
     if (exitHref) {
       router.push(exitHref);
@@ -77,11 +90,15 @@ export function PresentationSlideshow({
       onTouchStart={hasStarted ? handleInteraction : undefined}
       role="presentation"
     >
+      {(music?.trackUrl || musicSettings?.enabled) && (
+        <audio ref={sharedAudioRef} preload="auto" playsInline className="hidden" aria-hidden />
+      )}
+
       {showLaunch ? (
         <button
           type="button"
           className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-center px-4 sm:px-8 py-8 safe-top safe-bottom overflow-y-auto touch-scroll-y cursor-pointer"
-          onClick={startPresentation}
+          onClick={handleStart}
         >
           <div className="max-w-md space-y-4 sm:space-y-6 w-full">
             {displayMode ? (
@@ -108,6 +125,12 @@ export function PresentationSlideshow({
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-champagne/20 text-champagne text-sm font-medium">
               <Play className="w-4 h-4" /> Tap to Start
             </span>
+            {music?.enabled && music.trackUrl && (
+              <p className="text-ivory/50 text-xs inline-flex items-center justify-center gap-1.5">
+                <Music className="w-3.5 h-3.5" />
+                {music.trackName ?? "Wedding music"} will play
+              </p>
+            )}
             {!loading && (
               <p className="text-ivory/40 text-xs">
                 {photoCount > 0
@@ -131,6 +154,7 @@ export function PresentationSlideshow({
           outro={outro}
           music={music}
           musicEnabled={musicEnabled ?? music?.enabled}
+          externalAudioRef={sharedAudioRef}
           presentationMode
           displayMode={displayMode}
           controlsVisible={controlsVisible}

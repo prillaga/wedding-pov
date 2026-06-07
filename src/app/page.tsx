@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { APP_NAME, TAGLINE } from "@/lib/constants";
+import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
 import { cacheEventInSession, extractCfgParam, buildJoinPath } from "@/lib/event-bootstrap";
 import { resolveEventInput } from "@/lib/event-utils";
 import { Heart, QrCode, Settings } from "lucide-react";
@@ -16,11 +16,17 @@ const QRScanner = dynamic(() => import("@/components/qr/QRScanner"), { ssr: fals
 export default function HomePage() {
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
+  const [eventCode, setEventCode] = useState("");
+  const [manualError, setManualError] = useState("");
 
-  const handleScan = (raw: string) => {
+  const goToEvent = (raw: string) => {
     const { eventId, embeddedEvent } = resolveEventInput(raw);
-    if (!eventId) return;
+    if (!eventId) {
+      setManualError("Enter an event code or paste your invitation link.");
+      return;
+    }
 
+    setManualError("");
     setShowScanner(false);
 
     if (embeddedEvent) {
@@ -31,6 +37,10 @@ export default function HomePage() {
 
     const cfg = extractCfgParam(raw);
     router.push(buildJoinPath(eventId, cfg ?? undefined));
+  };
+
+  const handleScan = (raw: string) => {
+    goToEvent(raw);
   };
 
   return (
@@ -55,7 +65,8 @@ export default function HomePage() {
           </h1>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
           <p className="text-sm text-warm-gray/90 mt-4 leading-relaxed">
-            Scan the QR code on your wedding invitation to join and start taking photos.
+            Scan the QR code on your invitation, or enter your event code below to join and start
+            taking photos.
           </p>
         </motion.div>
       </section>
@@ -72,8 +83,42 @@ export default function HomePage() {
             Scan Invitation QR Code
           </Button>
 
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-champagne/20" />
+            <span className="text-xs text-warm-gray">or</span>
+            <div className="flex-1 h-px bg-champagne/20" />
+          </div>
+
+          <div className="space-y-2">
+            <input
+              value={eventCode}
+              onChange={(e) => {
+                setEventCode(e.target.value);
+                setManualError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && goToEvent(eventCode)}
+              placeholder="Event code, portable code, or invitation link"
+              className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
+            />
+            {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
+            <Button variant="secondary" className="w-full" onClick={() => goToEvent(eventCode)}>
+              Join with Code
+            </Button>
+          </div>
+
+          <p className="text-center text-xs text-warm-gray">
+            Demo code:{" "}
+            <button
+              type="button"
+              onClick={() => goToEvent(DEMO_EVENT_ID)}
+              className="text-champagne hover:underline"
+            >
+              {DEMO_EVENT_ID}
+            </button>
+          </p>
+
           <p className="text-center text-xs text-warm-gray px-2">
-            No account or setup needed — scan, enter your name, and the camera opens.
+            No account or setup needed — scan or enter a code, add your name, and the camera opens.
           </p>
 
           <Link
