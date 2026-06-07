@@ -5,8 +5,15 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
-import { cacheEventInSession, extractCfgParam, buildJoinPath } from "@/lib/event-bootstrap";
-import { resolveEventInput } from "@/lib/event-utils";
+import { cacheEventInSession, buildJoinPath } from "@/lib/event-bootstrap";
+import { isDemoEventId } from "@/lib/demo-event";
+import { lookupRemoteEventByCode, fetchRemoteEvent } from "@/lib/event-remote";
+import {
+  findLocalEventIdByShortCode,
+  resolveEventInput,
+} from "@/lib/event-utils";
+import { resolveEventIdAlias } from "@/lib/public-events";
+import { getEvents } from "@/lib/store";
 import { Heart, QrCode, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,29 +25,66 @@ export default function HomePage() {
   const [showScanner, setShowScanner] = useState(false);
   const [eventCode, setEventCode] = useState("");
   const [manualError, setManualError] = useState("");
+  const [joining, setJoining] = useState(false);
 
-  const goToEvent = (raw: string) => {
-    const { eventId, embeddedEvent } = resolveEventInput(raw);
-    if (!eventId) {
+  const goToEvent = async (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) {
       setManualError("Enter an event code or paste your invitation link.");
       return;
     }
 
+    setJoining(true);
     setManualError("");
     setShowScanner(false);
+
+    const { eventId, embeddedEvent } = resolveEventInput(trimmed);
 
     if (embeddedEvent) {
       cacheEventInSession(embeddedEvent);
       router.push(buildJoinPath(eventId));
+      setJoining(false);
       return;
     }
 
-    const cfg = extractCfgParam(raw);
-    router.push(buildJoinPath(eventId, cfg ?? undefined));
+    if (!eventId) {
+      setManualError("Enter an event code or paste your invitation link.");
+      setJoining(false);
+      return;
+    }
+
+    const localShortId = findLocalEventIdByShortCode(trimmed, getEvents());
+    const lookup = await lookupRemoteEventByCode(trimmed);
+    if (lookup) {
+      cacheEventInSession(lookup);
+      router.push(buildJoinPath(lookup.id));
+      setJoining(false);
+      return;
+    }
+
+    const resolvedId = localShortId ?? resolveEventIdAlias(eventId);
+    const remote = await fetchRemoteEvent(resolvedId);
+    if (remote) {
+      cacheEventInSession(remote);
+      router.push(buildJoinPath(remote.id));
+      setJoining(false);
+      return;
+    }
+
+    if (isDemoEventId(resolvedId)) {
+      router.push(buildJoinPath(DEMO_EVENT_ID));
+      setJoining(false);
+      return;
+    }
+
+    setManualError(
+      `Event "${trimmed}" not found. Double-check the code, or ask your host to tap Sync Now in the Admin Dashboard.`
+    );
+    setJoining(false);
   };
 
   const handleScan = (raw: string) => {
-    goToEvent(raw);
+    void goToEvent(raw);
   };
 
   return (
@@ -96,12 +140,17 @@ export default function HomePage() {
                 setEventCode(e.target.value);
                 setManualError("");
               }}
-              onKeyDown={(e) => e.key === "Enter" && goToEvent(eventCode)}
-              placeholder="Event code, portable code, or invitation link"
+              onKeyDown={(e) => e.key === "Enter" && void goToEvent(eventCode)}
+              placeholder="Event code (e.g. JJ2027), link, or event ID"
               className="w-full px-4 py-3 rounded-full border border-champagne/20 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-champagne/40"
             />
             {manualError && <p className="text-xs text-red-500 text-center">{manualError}</p>}
-            <Button variant="secondary" className="w-full" onClick={() => goToEvent(eventCode)}>
+            <Button
+              variant="secondary"
+              className="w-full"
+              loading={joining}
+              onClick={() => void goToEvent(eventCode)}
+            >
               Join with Code
             </Button>
           </div>
@@ -110,7 +159,7 @@ export default function HomePage() {
             Demo code:{" "}
             <button
               type="button"
-              onClick={() => goToEvent(DEMO_EVENT_ID)}
+              onClick={() => void goToEvent(DEMO_EVENT_ID)}
               className="text-champagne hover:underline"
             >
               {DEMO_EVENT_ID}

@@ -1,11 +1,14 @@
 import { ADMIN_PASSWORD } from "@/lib/constants";
 import { isDemoEventId, normalizeEventId } from "@/lib/demo-event";
-import { getPublicEvent } from "@/lib/public-events";
+import { getEventShortCode } from "@/lib/event-utils";
+import { getPublicEvent, resolveEventIdAlias } from "@/lib/public-events";
 import type { WeddingEvent } from "@/types";
 import { head, put } from "@vercel/blob";
 
 const KEY_PREFIX = "wedding-pov:event:";
 const BLOB_PREFIX = "wedding-pov/events/";
+const SHORT_CODE_PREFIX = "wedding-pov:shortcode:";
+const SHORT_CODE_BLOB_PREFIX = "wedding-pov/shortcodes/";
 
 function eventKey(eventId: string): string {
   return `${KEY_PREFIX}${normalizeEventId(eventId)}`;
@@ -127,6 +130,89 @@ export async function readEventFromCloud(eventId: string): Promise<WeddingEvent 
 
 export async function writeEventToCloud(event: WeddingEvent): Promise<boolean> {
   const blobOk = await writeEventToBlob(event);
-  if (blobOk) return true;
-  return kvSet(eventKey(event.id), JSON.stringify(event));
+  const kvOk = blobOk ? true : await kvSet(eventKey(event.id), JSON.stringify(event));
+  void writeShortCodeIndex(event);
+  return blobOk || kvOk;
+}
+
+function shortCodeLookupKey(code: string): string {
+  return `${SHORT_CODE_PREFIX}${code.trim().toUpperCase()}`;
+}
+
+async function writeShortCodeIndex(event: WeddingEvent): Promise<void> {
+  const code = getEventShortCode(event.settings).toUpperCase();
+  if (!code) return;
+
+  if (hasKv()) {
+    await kvSet(shortCodeLookupKey(code), event.id);
+    return;
+  }
+
+  if (hasBlob()) {
+    try {
+      await put(`${SHORT_CODE_BLOB_PREFIX}${code}.txt`, event.id, {
+        access: "public",
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: "text/plain",
+      });
+    } catch {
+      // Non-fatal — direct id lookup still works
+    }
+  }
+}
+
+async function resolveEventIdFromShortCode(code: string): Promise<string | null> {
+  const upper = code.trim().toUpperCase();
+  if (!/^[A-Z]{2}\d{4}$/.test(upper)) return null;
+
+  if (hasKv()) {
+    const mapped = await kvGet(shortCodeLookupKey(upper));
+    if (mapped) return normalizeEventId(mapped);
+  }
+
+  if (hasBlob()) {
+    try {
+      const meta = await head(`${SHORT_CODE_BLOB_PREFIX}${upper}.txt`, {
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+      const res = await fetch(meta.url, { cache: "no-store" });
+      if (res.ok) {
+        const mapped = (await res.text()).trim();
+        if (mapped) return normalizeEventId(mapped);
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  return null;
+}
+
+/** Resolve event id, alias, or guest short code (e.g. JJ2027). */
+export async function lookupEventByCode(code: string): Promise<WeddingEvent | null> {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+
+  const directId = normalizeEventId(trimmed);
+  const aliased = resolveEventIdAlias(trimmed);
+
+  for (const candidate of [directId, aliased]) {
+    if (!candidate) continue;
+    const event = await readEventFromCloud(candidate);
+    if (event) return event;
+  }
+
+  const fromShortCode = await resolveEventIdFromShortCode(trimmed);
+  if (fromShortCode) {
+    const event = await readEventFromCloud(fromShortCode);
+    if (event) return event;
+  }
+
+  if (isDemoEventId(aliased)) {
+    return getPublicEvent(aliased);
+  }
+
+  return null;
 }

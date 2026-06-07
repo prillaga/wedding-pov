@@ -30,6 +30,23 @@ export async function fetchRemoteEvent(eventId: string): Promise<WeddingEvent | 
   }
 }
 
+/** Resolve event id, slug, link, or short code (e.g. JJ2027) from cloud. */
+export async function lookupRemoteEventByCode(code: string): Promise<WeddingEvent | null> {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+
+  try {
+    const res = await fetch(`/api/events/lookup?code=${encodeURIComponent(trimmed)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { event?: WeddingEvent };
+    return data.event ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function pushRemoteEvent(event: WeddingEvent): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch(`/api/events/${encodeURIComponent(event.id)}`, {

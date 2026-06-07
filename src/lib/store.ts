@@ -14,6 +14,7 @@ import type {
   PhotoManagementSettings,
   VideoLimitSettings,
   SlideshowConfig,
+  SlideshowMusicSettings,
   ThemePreset,
   ThemeSettings,
   ThemeSettingsPatch,
@@ -271,31 +272,38 @@ function cacheEventLocally(event: WeddingEvent): WeddingEvent {
   return event;
 }
 
-/** Resolve event on any device — merge cloud config (incl. music) with local cache. */
+/** Resolve event on any device — always merge cloud config (incl. music) with local cache. */
 export async function loadEventForGuest(eventId: string): Promise<WeddingEvent | null> {
   const id = normalizeEventId(eventId);
   if (!id) return null;
 
+  let base: WeddingEvent | null = null;
+
   const bootstrap = readBootstrapFromLocation();
   if (bootstrap && normalizeEventId(bootstrap.id) === id) {
-    return cacheEventLocally(bootstrap);
+    base = bootstrap;
   }
 
-  const sessionEvent = readEventFromSession(id);
-  if (sessionEvent) {
-    return cacheEventLocally(sessionEvent);
+  if (!base) {
+    const sessionEvent = readEventFromSession(id);
+    if (sessionEvent) base = sessionEvent;
   }
 
-  const local = getEvents().find((e) => e.id === id);
+  if (!base) {
+    base = getEvents().find((e) => e.id === id) ?? null;
+  }
+
   const remote = await fetchRemoteEvent(id);
 
-  if (remote && local) {
-    return cacheEventLocally(mergeGuestEventConfig(local, remote));
+  if (remote && base) {
+    return cacheEventLocally(mergeGuestEventConfig(base, remote));
   }
   if (remote) {
     return cacheEventLocally(remote);
   }
-  if (local) return local;
+  if (base) {
+    return cacheEventLocally(base);
+  }
 
   if (isDemoEventId(id)) {
     return cacheEventLocally(getHardcodedDemoEvent());
@@ -309,6 +317,28 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   return null;
 }
 
+function mergeSlideshowMusic(
+  local?: SlideshowMusicSettings,
+  remote?: SlideshowMusicSettings
+): SlideshowMusicSettings {
+  const merged = {
+    ...DEFAULT_SLIDESHOW.music,
+    ...(local ?? {}),
+    ...(remote ?? {}),
+  };
+  const trackUrl = remote?.trackUrl || local?.trackUrl;
+  const trackName = remote?.trackName || local?.trackName;
+  return {
+    ...merged,
+    trackUrl,
+    trackName,
+    enabled: Boolean(trackUrl && (remote?.enabled || local?.enabled)),
+    bpm: remote?.bpm ?? local?.bpm ?? merged.bpm,
+    syncToBeat: remote?.syncToBeat ?? local?.syncToBeat ?? merged.syncToBeat,
+    volume: remote?.volume ?? local?.volume ?? merged.volume,
+  };
+}
+
 function mergeGuestEventConfig(local: WeddingEvent, remote: WeddingEvent): WeddingEvent {
   return migrateEvent({
     ...local,
@@ -318,11 +348,7 @@ function mergeGuestEventConfig(local: WeddingEvent, remote: WeddingEvent): Weddi
       ...remote.slideshow,
       intro: { ...local.slideshow.intro, ...remote.slideshow.intro },
       outro: { ...local.slideshow.outro, ...remote.slideshow.outro },
-      music: {
-        ...DEFAULT_SLIDESHOW.music,
-        ...(local.slideshow?.music ?? {}),
-        ...(remote.slideshow?.music ?? {}),
-      },
+      music: mergeSlideshowMusic(local.slideshow?.music, remote.slideshow?.music),
     },
   });
 }

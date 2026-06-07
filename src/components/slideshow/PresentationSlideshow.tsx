@@ -1,19 +1,21 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
 import { filterSlideshowPhotos } from "@/lib/slideshow-photos";
 import { countUniqueGuests } from "@/lib/highlight-reel";
 import { usePresentationControls } from "@/hooks/usePresentationControls";
 import type { SlideshowIntroOutro, SlideshowMusicSettings, SlideshowStyle, Upload } from "@/types";
-import { Monitor, Music, Play } from "lucide-react";
+import { Loader2, Monitor, Music, Play } from "lucide-react";
 
 interface PresentationSlideshowProps {
   eventId: string;
   coupleName?: string;
   uploads: Upload[];
   loading?: boolean;
+  /** Wait for event settings (incl. music) before allowing tap-to-start */
+  eventLoading?: boolean;
   style?: SlideshowStyle;
   interval?: number;
   showTimestamp?: boolean;
@@ -34,6 +36,7 @@ export function PresentationSlideshow({
   coupleName,
   uploads,
   loading,
+  eventLoading = false,
   style,
   interval,
   showTimestamp,
@@ -48,9 +51,12 @@ export function PresentationSlideshow({
 }: PresentationSlideshowProps) {
   const router = useRouter();
   const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
   const photoCount = useMemo(() => filterSlideshowPhotos(uploads).length, [uploads]);
   const guestCount = useMemo(() => countUniqueGuests(filterSlideshowPhotos(uploads)), [uploads]);
   const musicSettings = music ?? (musicEnabled ? { enabled: true } : undefined);
+  const launchReady = !eventLoading;
+
   const {
     containerRef,
     controlsVisible,
@@ -60,13 +66,26 @@ export function PresentationSlideshow({
     exitFullscreen,
   } = usePresentationControls({ autoHideMs: 3000 });
 
-  const handleStart = () => {
-    if (music?.enabled && music.trackUrl && sharedAudioRef.current) {
-      sharedAudioRef.current.src = music.trackUrl;
-      sharedAudioRef.current.loop = music.loop ?? true;
-      sharedAudioRef.current.volume = music.volume ?? 0.75;
-      void sharedAudioRef.current.play().catch(() => undefined);
+  const tryPlayMusic = useCallback(() => {
+    if (!audioUnlockedRef.current || !music?.enabled || !music.trackUrl || !sharedAudioRef.current) {
+      return;
     }
+    sharedAudioRef.current.src = music.trackUrl;
+    sharedAudioRef.current.loop = music.loop ?? true;
+    sharedAudioRef.current.volume = music.volume ?? 0.75;
+    void sharedAudioRef.current.play().catch(() => undefined);
+  }, [music]);
+
+  useEffect(() => {
+    if (hasStarted && audioUnlockedRef.current) {
+      tryPlayMusic();
+    }
+  }, [hasStarted, music, tryPlayMusic]);
+
+  const handleStart = () => {
+    if (!launchReady) return;
+    audioUnlockedRef.current = true;
+    tryPlayMusic();
     void startPresentation();
   };
 
@@ -90,17 +109,26 @@ export function PresentationSlideshow({
       onTouchStart={hasStarted ? handleInteraction : undefined}
       role="presentation"
     >
-      {(music?.trackUrl || musicSettings?.enabled) && (
+      {(music?.trackUrl || musicSettings?.enabled || eventLoading) && (
         <audio ref={sharedAudioRef} preload="auto" playsInline className="hidden" aria-hidden />
       )}
 
       {showLaunch ? (
         <button
           type="button"
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-center px-4 sm:px-8 py-8 safe-top safe-bottom overflow-y-auto touch-scroll-y cursor-pointer"
+          disabled={!launchReady}
+          className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-center px-4 sm:px-8 py-8 safe-top safe-bottom overflow-y-auto touch-scroll-y ${
+            launchReady ? "cursor-pointer" : "cursor-wait opacity-90"
+          }`}
           onClick={handleStart}
         >
           <div className="max-w-md space-y-4 sm:space-y-6 w-full">
+            {!launchReady && (
+              <p className="text-ivory/50 text-sm inline-flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading slideshow settings…
+              </p>
+            )}
             {displayMode ? (
               <>
                 <Monitor className="w-10 h-10 sm:w-12 sm:h-12 text-champagne/70 mx-auto" />
@@ -122,8 +150,14 @@ export function PresentationSlideshow({
                 </p>
               </>
             )}
-            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-champagne/20 text-champagne text-sm font-medium">
-              <Play className="w-4 h-4" /> Tap to Start
+            <span
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium ${
+                launchReady
+                  ? "bg-champagne/20 text-champagne"
+                  : "bg-white/10 text-ivory/40"
+              }`}
+            >
+              <Play className="w-4 h-4" /> {launchReady ? "Tap to Start" : "Loading…"}
             </span>
             {music?.enabled && music.trackUrl && (
               <p className="text-ivory/50 text-xs inline-flex items-center justify-center gap-1.5">

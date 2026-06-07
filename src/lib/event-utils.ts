@@ -79,6 +79,18 @@ export function resolveEventIdFromInput(raw: string): string {
   return resolveEventInput(raw).eventId;
 }
 
+/** Match admin short codes (e.g. JJ2027) against locally stored events. */
+export function findLocalEventIdByShortCode(code: string, events: WeddingEvent[]): string | null {
+  const upper = code.trim().toUpperCase();
+  if (!/^[A-Z]{2}\d{4}$/.test(upper)) return null;
+  for (const event of events) {
+    if (getEventShortCode(event.settings).toUpperCase() === upper) {
+      return event.id;
+    }
+  }
+  return null;
+}
+
 export function generateEventSlug(
   settings: Pick<EventSettings, "brideName" | "groomName" | "weddingDate">,
   takenIds: string[]

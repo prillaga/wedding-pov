@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/Input";
 import { SLIDESHOW_BEATS_PER_SLIDE_OPTIONS, DEFAULT_SLIDESHOW } from "@/lib/constants";
 import { detectBpmFromFile } from "@/lib/audio-bpm";
 import { uploadSlideshowMusicRemote } from "@/lib/music-remote";
-import { updateSlideshow } from "@/lib/store";
+import { pushRemoteEvent } from "@/lib/event-remote";
+import { getEvent, updateSlideshow } from "@/lib/store";
 import type { SlideshowMusicSettings, WeddingEvent } from "@/types";
 import { AudioLines, Music, Trash2, Upload } from "lucide-react";
 
@@ -57,10 +58,8 @@ export function SlideshowMusicPanel({ event, onRefresh, compact }: SlideshowMusi
       if (remote.ok) {
         trackUrl = remote.trackUrl;
         trackName = remote.trackName;
-        setUploadMessage("Music uploaded — ready for slideshow & TV display.");
       } else if (file.size <= LOCAL_DATA_URL_MAX) {
         trackUrl = await readFileAsDataUrl(file);
-        setUploadMessage("Saved on this device. Sync event to cloud for TV playback.");
       } else {
         setUploadMessage(remote.error ?? "File too large for this device. Use a track under 2 MB or connect cloud storage.");
         return;
@@ -73,6 +72,18 @@ export function SlideshowMusicPanel({ event, onRefresh, compact }: SlideshowMusi
         enabled: true,
         syncToBeat: music.syncToBeat ?? false,
       });
+
+      const updated = getEvent(event.id);
+      if (updated) {
+        const sync = await pushRemoteEvent(updated);
+        if (sync.ok) {
+          setUploadMessage("Music uploaded and synced — ready for slideshow & TV display.");
+        } else if (remote.ok) {
+          setUploadMessage(`Music uploaded but sync failed: ${sync.error ?? "tap Sync Now in admin."}`);
+        } else {
+          setUploadMessage(`Saved on this device. Sync failed: ${sync.error ?? "tap Sync Now in admin."}`);
+        }
+      }
     } catch {
       setUploadMessage("Could not process audio file.");
     } finally {

@@ -12,6 +12,7 @@ export default function DisplayModePage() {
   const eventId = params.eventId as string;
   const { photos, loading, refresh } = useEventPhotos(eventId, { pollIntervalMs: 2000 });
   const [event, setEvent] = useState<WeddingEvent | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   useLayoutEffect(() => {
     let cancelled = false;
@@ -19,6 +20,7 @@ export default function DisplayModePage() {
       if (cancelled) return;
       if (loaded) seedSampleUploads(eventId);
       setEvent(loaded);
+      setEventLoading(false);
       refresh();
     });
     return () => {
@@ -32,6 +34,7 @@ export default function DisplayModePage() {
       coupleName={event?.coupleName}
       uploads={photos}
       loading={loading}
+      eventLoading={eventLoading}
       displayMode
       style={event?.slideshow.style ?? "fade"}
       interval={event?.slideshow.transitionDuration ?? 5000}
