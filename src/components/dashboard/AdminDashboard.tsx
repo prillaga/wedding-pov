@@ -27,6 +27,7 @@ import {
   Film,
   FolderArchive,
   ImageIcon,
+  Music,
   Palette,
   QrCode,
   Settings,
@@ -42,6 +43,7 @@ import { EventStatusPanel } from "./EventStatusPanel";
 import { HeroBannerEditor } from "./HeroBannerEditor";
 import { PhotoLimitManager } from "./PhotoLimitManager";
 import { SlideshowSettingsPanel } from "./SlideshowSettingsPanel";
+import { SlideshowMusicPanel } from "./SlideshowMusicPanel";
 import { TemplateManager } from "./TemplateManager";
 import { ThemeManager } from "./ThemeManager";
 
@@ -53,6 +55,7 @@ type AdminTab =
   | "hero"
   | "theme"
   | "slideshow"
+  | "music"
   | "templates"
   | "moderation"
   | "guests"
@@ -91,6 +94,7 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
     { id: "hero", label: "Hero Banner", icon: <ImageIcon className="w-4 h-4" /> },
     { id: "theme", label: "Theme", icon: <Palette className="w-4 h-4" /> },
     { id: "slideshow", label: "Slideshow", icon: <Film className="w-4 h-4" /> },
+    { id: "music", label: "Music", icon: <Music className="w-4 h-4" /> },
     { id: "templates", label: "Templates", icon: <Bookmark className="w-4 h-4" /> },
     { id: "moderation", label: "Moderation", icon: <Shield className="w-4 h-4" /> },
     { id: "guests", label: "Guests", icon: <Users className="w-4 h-4" /> },
@@ -184,6 +188,8 @@ export function AdminDashboard({ eventId }: AdminDashboardProps) {
       {tab === "slideshow" && (
         <SlideshowSettingsPanel event={event} onRefresh={refresh} />
       )}
+
+      {tab === "music" && <SlideshowMusicPanel event={event} onRefresh={refresh} />}
 
       {tab === "templates" && (
         <TemplateManager eventId={eventId} onRefresh={refresh} />
