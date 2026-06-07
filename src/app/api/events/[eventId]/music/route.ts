@@ -10,7 +10,8 @@ import { normalizeEventId } from "@/lib/demo-event";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MAX_BYTES = 4.5 * 1024 * 1024;
+/** Legacy small-file upload — prefer client upload at /music/upload for larger tracks. */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(
   request: Request,
@@ -55,8 +56,11 @@ export async function POST(
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "Music file is too large. Please use a track under 4.5 MB." },
-      { status: 400 }
+      {
+        error:
+          "File too large for server upload. The app now uploads directly to cloud — refresh the page and try again.",
+      },
+      { status: 413 }
     );
   }
 

@@ -62,7 +62,7 @@ export function SlideshowMusicPanel({ event, onRefresh, compact }: SlideshowMusi
         trackUrl = await readFileAsDataUrl(file);
         setUploadMessage("Saved on this device. Sync event to cloud for TV playback.");
       } else {
-        setUploadMessage(remote.error ?? "File too large. Use a track under 4.5 MB.");
+        setUploadMessage(remote.error ?? "File too large for this device. Use a track under 2 MB or connect cloud storage.");
         return;
       }
 
@@ -143,7 +143,7 @@ export function SlideshowMusicPanel({ event, onRefresh, compact }: SlideshowMusi
             <p className="font-medium text-charcoal">
               {uploading ? "Adding music…" : "Add Music"}
             </p>
-            <p className="text-xs text-warm-gray mt-1">MP3, M4A, or WAV · max 4.5 MB</p>
+            <p className="text-xs text-warm-gray mt-1">MP3, M4A, or WAV · up to 50 MB</p>
           </div>
         </button>
       )}
