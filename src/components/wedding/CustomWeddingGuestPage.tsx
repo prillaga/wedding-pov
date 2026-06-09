@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { CoupleJoinFlow } from "@/components/home/CoupleJoinFlow";
 import { EventThemeProvider } from "@/components/theme/EventThemeProvider";
 import { LoadingShell } from "@/components/ui/LoadingShell";
+import { isDemoEventId } from "@/lib/demo-event";
 import { readBootstrapFromLocation, cacheEventInSession } from "@/lib/event-bootstrap";
 import { getEventStatusLabel, isEventJoinable } from "@/lib/event-utils";
-import { loadEventForGuest } from "@/lib/store";
+import { loadEventForGuest, seedSampleUploads } from "@/lib/store";
 import type { WeddingEvent } from "@/types";
 
 interface CustomWeddingGuestPageProps {
@@ -21,17 +22,33 @@ export default function CustomWeddingGuestPage({
 }: CustomWeddingGuestPageProps) {
   const [event, setEvent] = useState<WeddingEvent | null | undefined>(undefined);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
-    const bootstrap = readBootstrapFromLocation();
-    if (bootstrap && bootstrap.id === eventId) {
-      cacheEventInSession(bootstrap);
+
+    const refreshEvent = () => {
+      const bootstrap = readBootstrapFromLocation();
+      if (bootstrap && bootstrap.id === eventId) {
+        cacheEventInSession(bootstrap);
+      }
+      void loadEventForGuest(eventId).then((loaded) => {
+        if (!cancelled) setEvent(loaded);
+      });
+    };
+
+    refreshEvent();
+
+    if (isDemoEventId(eventId)) {
+      void seedSampleUploads(eventId);
     }
-    void loadEventForGuest(eventId).then((loaded) => {
-      if (!cancelled) setEvent(loaded);
-    });
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshEvent();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [eventId]);
 

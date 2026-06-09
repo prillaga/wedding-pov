@@ -1,6 +1,5 @@
 import { ADMIN_AUTH_KEY, ADMIN_PASSWORD } from "@/lib/constants";
-import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "@/lib/demo-event";
-import { getPublicEvent } from "@/lib/public-events";
+import { normalizeEventId } from "@/lib/demo-event";
 import type { WeddingEvent } from "@/types";
 
 function getAdminPasswordHeader(): string | undefined {
@@ -23,9 +22,6 @@ export async function fetchRemoteEvent(eventId: string): Promise<WeddingEvent | 
     const data = (await res.json()) as { event?: WeddingEvent };
     return data.event ?? null;
   } catch {
-    if (isDemoEventId(id)) {
-      return getPublicEvent(id) ?? getHardcodedDemoEvent();
-    }
     return null;
   }
 }

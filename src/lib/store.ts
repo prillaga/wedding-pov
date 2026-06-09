@@ -324,24 +324,20 @@ export async function loadEventForGuest(eventId: string): Promise<WeddingEvent |
   const id = toCanonicalEventId(eventId);
   if (!id) return null;
 
-  let base: WeddingEvent | null = null;
-
+  const stored = getEvents().find((e) => e.id === id) ?? null;
+  const sessionEvent = readEventFromSession(id);
   const bootstrap = readBootstrapFromLocation();
-  if (bootstrap && normalizeEventId(bootstrap.id) === id) {
-    base = bootstrap;
-  }
+  const bootstrapMatch =
+    bootstrap && normalizeEventId(bootstrap.id) === id ? bootstrap : null;
 
-  if (!base) {
-    const sessionEvent = readEventFromSession(id);
-    if (sessionEvent) base = sessionEvent;
-  }
-
-  if (!base) {
-    base = getEvents().find((e) => e.id === id) ?? null;
-  }
+  // Prefer persisted admin edits, then session cache, then compact QR bootstrap.
+  const base: WeddingEvent | null = stored ?? sessionEvent ?? bootstrapMatch;
 
   const remote = await fetchRemoteEvent(id);
 
+  if (remote && stored) {
+    return cacheEventLocally(mergeGuestEventConfig(remote, stored));
+  }
   if (remote && base) {
     return cacheEventLocally(mergeGuestEventConfig(base, remote));
   }

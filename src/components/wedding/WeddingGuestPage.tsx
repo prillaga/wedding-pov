@@ -1,8 +1,7 @@
 "use client";
 
 import CustomWeddingGuestPage from "@/components/wedding/CustomWeddingGuestPage";
-import DemoWeddingGuestPage from "@/components/wedding/DemoWeddingGuestPage";
-import { isDemoEventId, normalizeEventId } from "@/lib/demo-event";
+import { normalizeEventId } from "@/lib/demo-event";
 import { resolveEventIdAlias } from "@/lib/public-events";
 
 interface WeddingGuestPageProps {
@@ -13,11 +12,5 @@ interface WeddingGuestPageProps {
 export default function WeddingGuestPage({ eventId, startOnJoin = false }: WeddingGuestPageProps) {
   const normalizedId = resolveEventIdAlias(normalizeEventId(eventId));
 
-  if (isDemoEventId(normalizedId)) {
-    return <DemoWeddingGuestPage startOnJoin={startOnJoin} />;
-  }
-
-  return (
-    <CustomWeddingGuestPage eventId={normalizedId} startOnJoin={startOnJoin} />
-  );
+  return <CustomWeddingGuestPage eventId={normalizedId} startOnJoin={startOnJoin} />;
 }
