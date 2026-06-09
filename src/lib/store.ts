@@ -1015,13 +1015,15 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
   const id = toCanonicalEventId(eventId);
   if (!isDemoEventId(id)) return;
 
-  if (!force && localStorage.getItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY) === "1") {
-    return;
-  }
-
   seedDemoEvent();
 
   const storedVersion = Number(localStorage.getItem(DEMO_SAMPLE_GALLERY_VERSION_KEY) ?? 0);
+  const versionMismatch = storedVersion !== DEMO_SAMPLE_GALLERY_VERSION;
+
+  if (!force && !versionMismatch && localStorage.getItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY) === "1") {
+    return;
+  }
+
   const sampleIds = new Set(DEMO_SAMPLE_PHOTOS.map((p) => p.id));
   const demoUploads = getUploads(id);
   const onlySampleUploads =
