@@ -44,6 +44,7 @@ import {
   toCanonicalEventId,
 } from "./demo-event";
 import {
+  DEMO_SAMPLE_GALLERY_CLEARED_KEY,
   DEMO_SAMPLE_GALLERY_VERSION,
   DEMO_SAMPLE_GALLERY_VERSION_KEY,
   DEMO_SAMPLE_GUEST_NAMES,
@@ -1014,6 +1015,10 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
   const id = toCanonicalEventId(eventId);
   if (!isDemoEventId(id)) return;
 
+  if (!force && localStorage.getItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY) === "1") {
+    return;
+  }
+
   seedDemoEvent();
 
   const storedVersion = Number(localStorage.getItem(DEMO_SAMPLE_GALLERY_VERSION_KEY) ?? 0);
@@ -1074,10 +1079,22 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
 
     writePersistedUploads([...sampleUploads, ...otherUploads]);
     localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, String(DEMO_SAMPLE_GALLERY_VERSION));
+    localStorage.removeItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY);
     window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
   } catch (err) {
     console.warn("[WeddingPOV] Demo sample photos could not be seeded:", err);
   }
+}
+
+/** Wipe JJ2027 gallery and block sample photo auto-seed until restored from admin. */
+export function clearDemoGallery(): number {
+  if (typeof window === "undefined") return 0;
+  const removed = getUploads(DEMO_EVENT_ID).length;
+  clearAllDemoGalleryUploads(DEMO_EVENT_ID);
+  localStorage.setItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY, "1");
+  localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, "0");
+  window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
+  return removed;
 }
 
 /** Remove every upload for the JJ2027 demo — gallery is replaced with sample photos only. */

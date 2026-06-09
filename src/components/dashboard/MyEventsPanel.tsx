@@ -9,12 +9,14 @@ import { getEventJoinUrl, getEventShortCode, getEventStatusLabel } from "@/lib/e
 import {
   archiveEvent,
   cleanupAllEventsExceptDemo,
+  clearDemoGallery,
   deleteEventPermanently,
   getArchivedEvents,
   getEventStats,
   getManageableEvents,
   getUploads,
   restoreEvent,
+  seedSampleUploads,
 } from "@/lib/store";
 import { DEMO_EVENT_ID } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
@@ -26,6 +28,7 @@ export function MyEventsPanel() {
   const [qrModal, setQrModal] = useState<{ eventId: string; autoDownload?: boolean } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WeddingEvent | null>(null);
   const [showSampleCleanup, setShowSampleCleanup] = useState(false);
+  const [showClearDemoGallery, setShowClearDemoGallery] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const events = useMemo(() => getManageableEvents(), [refreshKey]);
   const archivedEvents = useMemo(() => getArchivedEvents(), [refreshKey]);
@@ -51,7 +54,21 @@ export function MyEventsPanel() {
     }
   };
 
+  const handleClearDemoGallery = () => {
+    clearDemoGallery();
+    setShowClearDemoGallery(false);
+    refresh();
+  };
+
+  const handleRestoreDemoGallery = () => {
+    void seedSampleUploads(DEMO_EVENT_ID, true).then(refresh);
+  };
+
   const nonDemoCount = events.filter((e) => e.id !== DEMO_EVENT_ID).length;
+  const demoEvent = events.find((e) => e.id === DEMO_EVENT_ID);
+  const demoPhotoCount = demoEvent
+    ? getUploads(demoEvent.id).filter((u) => u.status !== "removed").length
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -106,6 +123,35 @@ export function MyEventsPanel() {
                 />
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {showClearDemoGallery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-2 text-red-600 mb-3">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="font-serif text-lg font-semibold">Clear JJ2027 Gallery?</h3>
+            </div>
+            <p className="text-sm text-warm-gray leading-relaxed mb-4">
+              This removes all <strong>{demoPhotoCount} photo(s)</strong> and guest uploads from the
+              JJ2027 sample wedding. Sample photos will not come back until you restore them from
+              admin.
+            </p>
+            <div className="space-y-2">
+              <Button variant="secondary" className="w-full" onClick={() => setShowClearDemoGallery(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-red-500 hover:bg-red-50"
+                onClick={handleClearDemoGallery}
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear Gallery
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -196,6 +242,12 @@ export function MyEventsPanel() {
                 refresh();
               }}
               onDelete={() => setDeleteTarget(event)}
+              onClearGallery={
+                event.id === DEMO_EVENT_ID ? () => setShowClearDemoGallery(true) : undefined
+              }
+              onRestoreGallery={
+                event.id === DEMO_EVENT_ID ? handleRestoreDemoGallery : undefined
+              }
             />
           ))}
         </div>
@@ -297,6 +349,8 @@ function EventCard({
   onEdit,
   onArchive,
   onDelete,
+  onClearGallery,
+  onRestoreGallery,
 }: {
   event: WeddingEvent;
   onViewQr: () => void;
@@ -304,7 +358,11 @@ function EventCard({
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onClearGallery?: () => void;
+  onRestoreGallery?: () => void;
 }) {
+  const isDemo = event.id === DEMO_EVENT_ID;
+
   return (
     <div className="p-4 rounded-2xl bg-white wedding-shadow border border-champagne/10 space-y-3">
       <EventCardContent event={event} />
@@ -318,12 +376,26 @@ function EventCard({
         <Button variant="ghost" size="sm" onClick={onEdit}>
           <Edit className="w-4 h-4" /> Edit Event
         </Button>
-        <Button variant="ghost" size="sm" onClick={onArchive}>
-          <Archive className="w-4 h-4" /> Archive Event
-        </Button>
-        <Button variant="ghost" size="sm" className="text-red-500" onClick={onDelete}>
-          <Trash2 className="w-4 h-4" /> Permanently Delete
-        </Button>
+        {!isDemo && (
+          <Button variant="ghost" size="sm" onClick={onArchive}>
+            <Archive className="w-4 h-4" /> Archive Event
+          </Button>
+        )}
+        {onClearGallery && (
+          <Button variant="ghost" size="sm" className="text-red-500" onClick={onClearGallery}>
+            <Trash2 className="w-4 h-4" /> Clear Gallery
+          </Button>
+        )}
+        {onRestoreGallery && (
+          <Button variant="ghost" size="sm" onClick={onRestoreGallery}>
+            <RotateCcw className="w-4 h-4" /> Restore Sample Photos
+          </Button>
+        )}
+        {!isDemo && (
+          <Button variant="ghost" size="sm" className="text-red-500" onClick={onDelete}>
+            <Trash2 className="w-4 h-4" /> Permanently Delete
+          </Button>
+        )}
       </div>
     </div>
   );

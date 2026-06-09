@@ -5,6 +5,9 @@ export const DEMO_SAMPLE_GALLERY_VERSION = 3;
 
 export const DEMO_SAMPLE_GALLERY_VERSION_KEY = "wedding-pov-demo-gallery-version";
 
+/** When set, JJ2027 gallery stays empty — sample photos are not auto-seeded. */
+export const DEMO_SAMPLE_GALLERY_CLEARED_KEY = "wedding-pov-demo-gallery-cleared";
+
 /** Wedding date for JJ2027 demo — timestamps align with sample slideshow labels. */
 export const DEMO_WEDDING_DAY = "2027-06-20";
 

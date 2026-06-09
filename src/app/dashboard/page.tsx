@@ -5,16 +5,26 @@ import Link from "next/link";
 import { CloudSyncBanner } from "@/components/admin/CloudSyncBanner";
 import { MyEventsPanel } from "@/components/dashboard/MyEventsPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { cleanupAllEventsExceptDemo, seedDemoEvent, seedSampleUploads } from "@/lib/store";
+import {
+  cleanupAllEventsExceptDemo,
+  clearDemoGallery,
+  seedDemoEvent,
+  seedSampleUploads,
+} from "@/lib/store";
 import { DEMO_EVENT_ID, STUDIO_NAME } from "@/lib/constants";
 import { ArrowLeft, Settings } from "lucide-react";
 
 export default function AdminHomePage() {
   useLayoutEffect(() => {
     seedDemoEvent();
-    void seedSampleUploads(DEMO_EVENT_ID);
     const params = new URLSearchParams(window.location.search);
-    if (params.get("keep-sample-only") === "1") {
+    if (params.get("clear-demo-gallery") === "1") {
+      clearDemoGallery();
+      window.history.replaceState({}, "", "/dashboard");
+    } else if (params.get("restore-demo-gallery") === "1") {
+      void seedSampleUploads(DEMO_EVENT_ID, true);
+      window.history.replaceState({}, "", "/dashboard");
+    } else if (params.get("keep-sample-only") === "1") {
       cleanupAllEventsExceptDemo();
       void seedSampleUploads(DEMO_EVENT_ID, true);
       window.history.replaceState({}, "", "/dashboard");
