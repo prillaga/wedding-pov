@@ -192,6 +192,99 @@ function write<T>(key: string, value: T): boolean {
   }
 }
 
+export const THEME_MEDIA_REF = "theme-media:";
+
+const themeMediaCache = new Map<string, string>();
+
+function isDataUrl(value?: string): boolean {
+  return Boolean(value?.startsWith("data:"));
+}
+
+export function isThemeMediaRef(value?: string): boolean {
+  return Boolean(value?.startsWith(THEME_MEDIA_REF));
+}
+
+function themeMediaStorageKey(eventId: string, slot: string): string {
+  return `${eventId}:${THEME_MEDIA_REF}${slot}`;
+}
+
+export async function resolveThemeMediaUrl(
+  eventId: string,
+  value?: string
+): Promise<string | undefined> {
+  if (!value) return undefined;
+  if (isDataUrl(value) || value.startsWith("/") || value.startsWith("http")) return value;
+  if (!isThemeMediaRef(value)) return value;
+
+  const slot = value.slice(THEME_MEDIA_REF.length);
+  const storageKey = themeMediaStorageKey(eventId, slot);
+  const cached = themeMediaCache.get(storageKey);
+  if (cached) return cached;
+
+  const media = await getUploadMedia(storageKey);
+  if (media) themeMediaCache.set(storageKey, media);
+  return media ?? undefined;
+}
+
+async function externalizeThemeMedia(event: WeddingEvent): Promise<WeddingEvent> {
+  const theme = { ...event.theme };
+  const hero = { ...theme.hero };
+
+  if (isDataUrl(theme.backgroundImage)) {
+    const slot = "background";
+    const storageKey = themeMediaStorageKey(event.id, slot);
+    const ok = await saveUploadMedia(storageKey, theme.backgroundImage!);
+    if (ok) {
+      themeMediaCache.set(storageKey, theme.backgroundImage!);
+      theme.backgroundImage = `${THEME_MEDIA_REF}${slot}`;
+    }
+  }
+
+  if (isDataUrl(hero.couplePhoto)) {
+    const slot = "couple";
+    const storageKey = themeMediaStorageKey(event.id, slot);
+    const ok = await saveUploadMedia(storageKey, hero.couplePhoto!);
+    if (ok) {
+      themeMediaCache.set(storageKey, hero.couplePhoto!);
+      hero.couplePhoto = `${THEME_MEDIA_REF}${slot}`;
+    }
+  }
+
+  hero.backgroundImages = await Promise.all(
+    (hero.backgroundImages ?? []).map(async (url, index) => {
+      if (!isDataUrl(url)) return url;
+      const slot = `bg-${index}`;
+      const storageKey = themeMediaStorageKey(event.id, slot);
+      const ok = await saveUploadMedia(storageKey, url);
+      if (ok) {
+        themeMediaCache.set(storageKey, url);
+        return `${THEME_MEDIA_REF}${slot}`;
+      }
+      return url;
+    })
+  );
+
+  return { ...event, theme: { ...theme, hero } };
+}
+
+function stripInlineThemeMedia(event: WeddingEvent): WeddingEvent {
+  const theme = { ...event.theme };
+  const hero = { ...theme.hero };
+  if (isDataUrl(theme.backgroundImage)) theme.backgroundImage = undefined;
+  if (isDataUrl(hero.couplePhoto)) hero.couplePhoto = undefined;
+  hero.backgroundImages = (hero.backgroundImages ?? []).filter((url) => !isDataUrl(url));
+  return { ...event, theme: { ...theme, hero } };
+}
+
+function upsertEventRecord(event: WeddingEvent): boolean {
+  const events = getEvents();
+  const exists = events.some((e) => e.id === event.id);
+  const next = exists
+    ? events.map((e) => (e.id === event.id ? event : e))
+    : [...events, event];
+  return write(EVENTS_KEY, next);
+}
+
 function mergeHeroSettings(raw?: Partial<HeroSettings>): HeroSettings {
   const h = raw ?? {};
   return {
@@ -408,12 +501,15 @@ function mergeGuestEventConfig(local: WeddingEvent, remote: WeddingEvent): Weddi
   });
 }
 
-export function saveEvent(event: WeddingEvent): void {
-  write(
-    EVENTS_KEY,
-    getEvents().map((e) => (e.id === event.id ? event : e))
-  );
-  void pushRemoteEvent(event);
+export function saveEvent(event: WeddingEvent): boolean {
+  const saved = upsertEventRecord(event);
+  if (saved) void pushRemoteEvent(event);
+  void externalizeThemeMedia(event).then((stored) => {
+    if (JSON.stringify(stored.theme) !== JSON.stringify(event.theme)) {
+      upsertEventRecord(stored);
+    }
+  });
+  return saved;
 }
 
 export function updateEventSettings(eventId: string, settings: Partial<EventSettings>): void {
@@ -480,7 +576,7 @@ export function createEvent(data: Omit<WeddingEvent, "id" | "createdAt">): Weddi
     id: uuidv4().slice(0, 8),
     createdAt: new Date().toISOString(),
   });
-  write(EVENTS_KEY, [...getEvents(), event]);
+  upsertEventRecord(event);
   return event;
 }
 
@@ -497,7 +593,16 @@ export interface CreateWeddingEventInput {
   couplePhoto?: string;
 }
 
-export function createWeddingEvent(input: CreateWeddingEventInput): WeddingEvent {
+export interface CreateWeddingEventResult {
+  event: WeddingEvent;
+  saved: boolean;
+  error?: string;
+  syncError?: string;
+}
+
+export async function createWeddingEvent(
+  input: CreateWeddingEventInput
+): Promise<CreateWeddingEventResult> {
   const settings: EventSettings = {
     brideName: input.brideName.trim(),
     groomName: input.groomName.trim(),
@@ -563,9 +668,33 @@ export function createWeddingEvent(input: CreateWeddingEventInput): WeddingEvent
     photoManagement: { ...DEFAULT_PHOTO_MANAGEMENT, afterUploadBehavior: "stay-in-camera" },
   });
 
-  write(EVENTS_KEY, [...getEvents(), event]);
-  void pushRemoteEvent(event);
-  return event;
+  const cloudEvent = event;
+  let storedEvent = await externalizeThemeMedia(event);
+  let saved = upsertEventRecord(storedEvent);
+
+  if (!saved) {
+    storedEvent = stripInlineThemeMedia(storedEvent);
+    saved = upsertEventRecord(storedEvent);
+  }
+
+  if (!saved) {
+    return {
+      event: cloudEvent,
+      saved: false,
+      error:
+        "Could not save this event on this device. Clear old photos from My Events or use a smaller couple photo, then try again.",
+    };
+  }
+
+  const sync = await pushRemoteEvent(cloudEvent);
+  return {
+    event: storedEvent,
+    saved: true,
+    syncError: sync.ok
+      ? undefined
+      : sync.error ??
+        "Event saved on this device only. Open Admin Dashboard and tap Sync Now after connecting Vercel Blob storage.",
+  };
 }
 
 export { isEventJoinable, isEventUploadsAllowed };
@@ -1274,10 +1403,10 @@ export function resetEventForNewWedding(
   return updated;
 }
 
-export function createNewWeddingEvent(
+export async function createNewWeddingEvent(
   sourceEventId: string,
   settings: Partial<EventSettings>
-): WeddingEvent | null {
+): Promise<WeddingEvent | null> {
   const source = getEvent(sourceEventId);
   if (!source) return null;
 
@@ -1285,8 +1414,13 @@ export function createNewWeddingEvent(
 
   const merged = { ...source.settings, ...settings };
   const preset = source.theme.preset !== "custom" ? source.theme.preset : "champagne";
+  const rawPhoto = source.theme.hero.couplePhoto ?? source.theme.backgroundImage;
+  let couplePhoto = rawPhoto;
+  if (rawPhoto && isThemeMediaRef(rawPhoto)) {
+    couplePhoto = (await resolveThemeMediaUrl(sourceEventId, rawPhoto)) ?? undefined;
+  }
 
-  return createWeddingEvent({
+  const result = await createWeddingEvent({
     brideName: merged.brideName,
     groomName: merged.groomName,
     weddingDate: merged.weddingDate,
@@ -1295,8 +1429,10 @@ export function createNewWeddingEvent(
     welcomeMessage: merged.welcomeMessage,
     maxPhotos: source.photoLimits.maxPhotos,
     themePreset: preset,
-    couplePhoto: source.theme.hero.couplePhoto ?? source.theme.backgroundImage,
+    couplePhoto,
   });
+
+  return result.saved ? result.event : null;
 }
 
 export function getStorageDashboard(): StorageDashboardStats {

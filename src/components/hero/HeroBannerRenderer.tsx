@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { resolveThemeMediaUrl } from "@/lib/store";
 import { TAGLINE, DEFAULT_HERO } from "@/lib/constants";
 import {
   getContentBackdropStyle,
@@ -54,7 +55,18 @@ export function HeroBannerRenderer({
     return () => clearInterval(timer);
   }, [useSlideshow, images, hero.slideshowInterval]);
 
-  const heroImage = resolveHeroImage(theme, hero, bgIndex);
+  const rawHeroImage = resolveHeroImage(theme, hero, bgIndex);
+  const [heroImage, setHeroImage] = useState<string | undefined>(rawHeroImage);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveThemeMediaUrl(event.id, rawHeroImage).then((resolved) => {
+      if (!cancelled) setHeroImage(resolved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [event.id, rawHeroImage]);
   const bgStyle = getHeroBackgroundStyle(theme, hero, heroImage);
   const overlayStyle = getHeroOverlayStyle(hero);
   const textShadow = getTextShadowStyle(hero.textShadow ?? true);

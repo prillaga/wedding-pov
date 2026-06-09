@@ -7,8 +7,8 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { EventQRCode } from "@/components/qr/EventQRCode";
 import { PHOTO_LIMIT_OPTIONS, THEME_PRESETS } from "@/lib/constants";
 import { generateDefaultHashtag, getEventJoinUrl, getEventShortCode } from "@/lib/event-utils";
-import { pushRemoteEvent } from "@/lib/event-remote";
-import { createWeddingEvent } from "@/lib/store";
+import { compressImageForUpload } from "@/lib/image-utils";
+import { createWeddingEvent, type CreateWeddingEventResult } from "@/lib/store";
 import type { PhotoLimitValue, ThemePreset } from "@/types";
 import { Calendar, Heart, ImagePlus, Sparkles } from "lucide-react";
 
@@ -33,9 +33,8 @@ export function CreateWeddingEventForm() {
   const [themePreset, setThemePreset] = useState<ThemePreset>("champagne");
   const [couplePhoto, setCouplePhoto] = useState<string | undefined>();
   const [creating, setCreating] = useState(false);
-  const [createdEvent, setCreatedEvent] = useState<ReturnType<typeof createWeddingEvent> | null>(
-    null
-  );
+  const [createError, setCreateError] = useState("");
+  const [createdEvent, setCreatedEvent] = useState<CreateWeddingEventResult["event"] | null>(null);
   const [syncWarning, setSyncWarning] = useState("");
 
   const previewHashtag =
@@ -44,12 +43,19 @@ export function CreateWeddingEventForm() {
       ? generateDefaultHashtag({ groomName, brideName, weddingDate })
       : "");
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!brideName.trim() || !groomName.trim() || !weddingDate || !venue.trim()) return;
     setCreating(true);
+    setCreateError("");
     setSyncWarning("");
+
     try {
-      const event = createWeddingEvent({
+      let photo = couplePhoto;
+      if (photo?.startsWith("data:image/")) {
+        photo = await compressImageForUpload(photo, 1280, 0.82);
+      }
+
+      const result = await createWeddingEvent({
         brideName,
         groomName,
         weddingDate,
@@ -58,17 +64,20 @@ export function CreateWeddingEventForm() {
         welcomeMessage,
         maxPhotos,
         themePreset,
-        couplePhoto,
+        couplePhoto: photo,
       });
-      setCreatedEvent(event);
-      void pushRemoteEvent(event).then((result) => {
-        if (!result.ok) {
-          setSyncWarning(
-            result.error ??
-              "Event saved on this device only. Open Admin Dashboard and tap Sync Now after connecting Vercel Blob storage."
-          );
-        }
-      });
+
+      if (!result.saved) {
+        setCreateError(result.error ?? "Could not save this event. Please try again.");
+        return;
+      }
+
+      setCreatedEvent(result.event);
+      if (result.syncError) {
+        setSyncWarning(result.syncError);
+      }
+    } catch {
+      setCreateError("Something went wrong while creating the event. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -251,11 +260,12 @@ export function CreateWeddingEventForm() {
         className="w-full"
         loading={creating}
         disabled={!brideName.trim() || !groomName.trim() || !weddingDate || !venue.trim()}
-        onClick={handleCreate}
+        onClick={() => void handleCreate()}
       >
         <Calendar className="w-5 h-5" />
         Create Event
       </Button>
+      {createError && <p className="text-sm text-red-500 text-center">{createError}</p>}
     </div>
   );
 }

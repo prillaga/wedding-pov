@@ -61,6 +61,7 @@ export function EventArchiveManager({
   const [newGroom, setNewGroom] = useState(event.settings.groomName);
   const [newDate, setNewDate] = useState(event.settings.weddingDate);
   const [newVenue, setNewVenue] = useState(event.settings.venue);
+  const [resetError, setResetError] = useState("");
 
   const storage = getStorageDashboard();
   const photos = useMemo(
@@ -105,15 +106,22 @@ export function EventArchiveManager({
     onRefresh();
   };
 
-  const handleCreateNewWedding = () => {
-    const created = createNewWeddingEvent(eventId, {
+  const handleCreateNewWedding = async () => {
+    setResetError("");
+    const created = await createNewWeddingEvent(eventId, {
       brideName: newBride,
       groomName: newGroom,
       weddingDate: newDate,
       venue: newVenue,
     });
+    if (!created) {
+      setResetError(
+        "Could not create the new wedding on this device. Clear old photos or free storage, then try again."
+      );
+      return;
+    }
     setShowResetModal(false);
-    if (created) router.push(`/dashboard/${created.id}`);
+    router.push(`/dashboard/${created.id}`);
     onRefresh();
   };
 
@@ -508,9 +516,10 @@ export function EventArchiveManager({
             >
               Download Backup First
             </Button>
-            <Button variant="gold" className="w-full" onClick={handleCreateNewWedding}>
+            <Button variant="gold" className="w-full" onClick={() => void handleCreateNewWedding()}>
               Create New Wedding (New QR / Link)
             </Button>
+            {resetError && <p className="text-sm text-red-500 text-center">{resetError}</p>}
             <Button variant="secondary" className="w-full" onClick={handleResetSameEvent}>
               Reset Same Event Link
             </Button>
