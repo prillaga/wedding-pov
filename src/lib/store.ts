@@ -1225,11 +1225,6 @@ export function cleanupAllEventsExceptDemo(): { removed: number; kept: string } 
 
   clearAllDemoGalleryUploads(DEMO_EVENT_ID);
 
-  write(
-    TEMPLATES_KEY,
-    getTemplates().filter((t) => t.eventId === DEMO_EVENT_ID)
-  );
-
   const session = getSession();
   if (session && !isDemoEventId(session.eventId)) {
     clearSession();

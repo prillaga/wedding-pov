@@ -4,6 +4,7 @@
  */
 
 import { ADMIN_PASSWORD, ADMIN_AUTH_KEY } from "@/lib/constants";
+import { patchRemotePhoto } from "@/lib/photo-remote";
 import { deleteUpload } from "@/lib/store";
 import { enqueuePrint } from "@/lib/printQueue";
 import type { PrintCenterPhoto } from "@/types/print-center";

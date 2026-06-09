@@ -88,6 +88,27 @@ function getStoragePublicUrl(path: string, supabaseUrl: string): string {
   return `${supabaseUrl}/storage/v1/object/public/wedding-uploads/${path}`;
 }
 
+function weddingEventJoin(
+  weddingEvents:
+    | {
+        couple_name: string;
+        event_category: string;
+        settings: WeddingEvent["settings"];
+      }
+    | {
+        couple_name: string;
+        event_category: string;
+        settings: WeddingEvent["settings"];
+      }[]
+    | null
+    | undefined
+): { couple_name: string; event_category: string; settings: WeddingEvent["settings"] } {
+  if (!weddingEvents) {
+    return { couple_name: "", event_category: "wedding", settings: {} as WeddingEvent["settings"] };
+  }
+  return Array.isArray(weddingEvents) ? weddingEvents[0] : weddingEvents;
+}
+
 export async function fetchPhotosFromSupabase(
   query: PrintCenterPhotosQuery
 ): Promise<PrintCenterPhotosResponse | null> {
@@ -129,7 +150,7 @@ export async function fetchPhotosFromSupabase(
     ? await getFavoritePhotoIdsSupabase()
     : await getFavoritePhotoIdsSupabase();
 
-  const rows = data as Array<{
+  const rows = data as unknown as Array<{
     id: string;
     event_id: string;
     guest_id: string;
@@ -142,11 +163,17 @@ export async function fetchPhotosFromSupabase(
     created_at: string;
     ai_score: number | null;
     ai_highlight_type: AiHighlightType | null;
-    wedding_events: {
-      couple_name: string;
-      event_category: string;
-      settings: WeddingEvent["settings"];
-    };
+    wedding_events:
+      | {
+          couple_name: string;
+          event_category: string;
+          settings: WeddingEvent["settings"];
+        }
+      | {
+          couple_name: string;
+          event_category: string;
+          settings: WeddingEvent["settings"];
+        }[];
   }>;
 
   let filtered = rows;
@@ -157,11 +184,13 @@ export async function fetchPhotosFromSupabase(
   const hasMore = filtered.length > limit;
   const page = hasMore ? filtered.slice(0, limit) : filtered;
 
-  const photos: PrintCenterPhoto[] = page.map((row) => ({
-    id: row.id,
-    eventId: row.event_id,
-    eventName: row.wedding_events.couple_name,
-    eventCategory: row.wedding_events.event_category,
+  const photos: PrintCenterPhoto[] = page.map((row) => {
+    const event = weddingEventJoin(row.wedding_events);
+    return {
+      id: row.id,
+      eventId: row.event_id,
+      eventName: event.couple_name,
+      eventCategory: event.event_category,
     guestId: row.guest_id,
     guestName: row.guest_name,
     imageUrl: getStoragePublicUrl(row.storage_path, config),
@@ -173,7 +202,8 @@ export async function fetchPhotosFromSupabase(
     aiScore: row.ai_score,
     aiHighlightType: row.ai_highlight_type,
     isFavorite: favoriteIds.has(row.id),
-  }));
+    };
+  });
 
   return {
     photos,
