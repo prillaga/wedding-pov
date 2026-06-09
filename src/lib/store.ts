@@ -147,7 +147,7 @@ export async function ensureUploadsHydrated(): Promise<void> {
   if (uploadsHydratePromise) return uploadsHydratePromise;
 
   uploadsHydratePromise = (async () => {
-    let records = await compactPersistedUploads(readPersistedUploads());
+    const records = await compactPersistedUploads(readPersistedUploads());
 
     await Promise.all(
       records.map(async (record) => {
