@@ -107,6 +107,8 @@ export interface EventSettings {
   venue: string;
   hashtag: string;
   welcomeMessage: string;
+  /** Event type for Print Center filtering */
+  eventType?: "wedding" | "birthday" | "graduation" | "corporate" | "other";
 }
 
 export interface ThemeColors {

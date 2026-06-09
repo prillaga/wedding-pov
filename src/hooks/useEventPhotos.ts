@@ -37,8 +37,14 @@ export function useEventPhotos(eventId: string, options: UseEventPhotosOptions =
     setLoading(true);
     refresh();
 
+    const onUploadsReady = () => refresh();
+    window.addEventListener("wedding-pov:uploads-ready", onUploadsReady);
+
     const interval = setInterval(refresh, pollIntervalMs);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("wedding-pov:uploads-ready", onUploadsReady);
+    };
   }, [eventId, enabled, pollIntervalMs, refresh]);
 
   return { photos, loading, error, refresh };

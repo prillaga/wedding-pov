@@ -71,7 +71,7 @@ export function EventStatusPanel({ event, onRefresh }: EventStatusPanelProps) {
             </Button>
           )}
           <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setShowDelete(true)}>
-            <Trash2 className="w-4 h-4" /> Delete Event
+            <Trash2 className="w-4 h-4" /> Permanently Delete
           </Button>
         </div>
 
@@ -99,11 +99,11 @@ export function EventStatusPanel({ event, onRefresh }: EventStatusPanelProps) {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center gap-2 text-red-600 mb-3">
               <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-serif text-lg font-semibold">Delete Event?</h3>
+              <h3 className="font-serif text-lg font-semibold">Permanently Delete Event?</h3>
             </div>
             <p className="text-sm text-warm-gray mb-4">
               This permanently removes all photos and data for {event.coupleName}. Download a backup
-              from the Archive tab first.
+              from the Archive tab first. This cannot be undone.
             </p>
             <div className="space-y-2">
               <Button variant="secondary" className="w-full" onClick={() => setShowDelete(false)}>
@@ -121,7 +121,7 @@ export function EventStatusPanel({ event, onRefresh }: EventStatusPanelProps) {
                   }
                 }}
               >
-                Delete Event
+                Permanently Delete
               </Button>
             </div>
           </div>

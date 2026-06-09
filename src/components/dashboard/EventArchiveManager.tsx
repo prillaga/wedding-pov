@@ -119,7 +119,7 @@ export function EventArchiveManager({
 
   const handleDelete = () => {
     if (deleteEventPermanently(eventId)) {
-      router.push("/");
+      router.push("/dashboard");
     } else {
       clearEventGuestData(eventId);
       setShowDeleteModal(false);
@@ -356,7 +356,7 @@ export function EventArchiveManager({
               <RefreshCw className="w-4 h-4" /> Create New Wedding
             </Button>
             <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setShowDeleteModal(true)}>
-              <Trash2 className="w-4 h-4" /> Delete Event
+              <Trash2 className="w-4 h-4" /> Permanently Delete
             </Button>
           </div>
         </section>
@@ -450,11 +450,11 @@ export function EventArchiveManager({
         <Modal onClose={() => setShowDeleteModal(false)}>
           <div className="flex items-center gap-2 text-red-600 mb-3">
             <AlertTriangle className="w-5 h-5" />
-            <h3 className="font-serif text-lg font-semibold">Warning</h3>
+            <h3 className="font-serif text-lg font-semibold">Permanently Delete Event?</h3>
           </div>
           <p className="text-sm text-warm-gray leading-relaxed mb-4">
             This action will permanently remove all wedding photos and event data for{" "}
-            <strong>{event.coupleName}</strong>.
+            <strong>{event.coupleName}</strong>. This cannot be undone.
           </p>
           <p className="text-sm font-medium mb-4">Have you downloaded a backup?</p>
           <div className="space-y-2">
@@ -472,7 +472,7 @@ export function EventArchiveManager({
               Cancel
             </Button>
             <Button variant="ghost" className="w-full text-red-500" onClick={handleDelete}>
-              Delete Event
+              Permanently Delete
             </Button>
           </div>
         </Modal>

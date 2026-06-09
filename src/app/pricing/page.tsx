@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { APP_NAME, TAGLINE } from "@/lib/constants";
+import { APP_NAME, STUDIO_NAME, TAGLINE } from "@/lib/constants";
 import { Check, Heart, Sparkles } from "lucide-react";
 
 const PLANS: {
@@ -76,9 +76,12 @@ export default function PricingPage() {
     <main className="min-h-dvh bg-ivory">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 safe-top safe-bottom">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <Link href="/" className="inline-flex items-center gap-2 text-champagne text-sm mb-4">
-            <Heart className="w-4 h-4 fill-champagne/30" />
-            {APP_NAME}
+          <Link href="/" className="inline-flex flex-col items-center gap-1 text-champagne text-sm mb-4">
+            <span className="inline-flex items-center gap-2">
+              <Heart className="w-4 h-4 fill-champagne/30" />
+              {APP_NAME}
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-warm-gray">by {STUDIO_NAME}</span>
           </Link>
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-charcoal">Pricing</h1>
           <p className="text-warm-gray mt-3">{TAGLINE}</p>

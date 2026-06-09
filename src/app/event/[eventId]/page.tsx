@@ -39,11 +39,11 @@ export default function EventHomePage() {
     let cancelled = false;
     void loadEventForGuest(eventId).then((loaded) => {
       if (cancelled) return;
-      if (loaded) seedSampleUploads(eventId);
+      if (loaded) void seedSampleUploads(eventId).then(() => refreshPhotos());
       setEvent(loaded);
       const session = getSession();
       setGuest(session ? getGuest(session.guestId) ?? null : null);
-      refreshPhotos();
+      if (!loaded) refreshPhotos();
     });
     return () => {
       cancelled = true;

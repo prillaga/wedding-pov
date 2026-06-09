@@ -18,10 +18,9 @@ export default function SlideshowPage() {
     let cancelled = false;
     void loadEventForGuest(eventId).then((loaded) => {
       if (cancelled) return;
-      if (loaded) seedSampleUploads(eventId);
+      if (loaded) void seedSampleUploads(eventId).then(() => refresh());
       setEvent(loaded);
       setEventLoading(false);
-      refresh();
     });
     return () => {
       cancelled = true;

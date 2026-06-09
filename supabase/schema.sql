@@ -53,3 +53,5 @@ create index if not exists wedding_guests_event_id_idx on wedding_guests(event_i
 -- Storage bucket policy (adjust for production RLS):
 -- 1. Create bucket `wedding-uploads` (public read or signed URLs)
 -- 2. Service role uploads from API routes; guests upload via signed URLs
+
+-- Instant Print Center tables: see supabase/migrations/20260605_print_center.sql

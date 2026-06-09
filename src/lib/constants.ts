@@ -15,6 +15,8 @@ import type {
 } from "@/types";
 
 export const APP_NAME = "Wedding POV";
+export const STUDIO_NAME = "Prillaga & Co.";
+export const APP_BRAND = `${APP_NAME} by ${STUDIO_NAME}`;
 export const TAGLINE = "See Your Wedding Through Every Guest's Eyes.";
 /** Production URL used in QR codes when admin is on localhost. Override with NEXT_PUBLIC_APP_URL. */
 export const PRODUCTION_APP_URL = "https://wedding-pov-two.vercel.app";

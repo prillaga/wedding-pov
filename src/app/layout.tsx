@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
 import "./globals.css";
-import { APP_NAME, TAGLINE } from "@/lib/constants";
+import { APP_BRAND, TAGLINE } from "@/lib/constants";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -16,8 +16,20 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — ${TAGLINE}`,
+  title: {
+    default: APP_BRAND,
+    template: `%s | ${APP_BRAND}`,
+  },
   description: TAGLINE,
+  applicationName: APP_BRAND,
+  appleWebApp: {
+    title: APP_BRAND,
+  },
+  openGraph: {
+    title: APP_BRAND,
+    description: TAGLINE,
+    siteName: APP_BRAND,
+  },
 };
 
 export const viewport: Viewport = {

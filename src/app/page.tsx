@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { APP_NAME, DEMO_EVENT_ID, TAGLINE } from "@/lib/constants";
+import { APP_NAME, DEMO_EVENT_ID, STUDIO_NAME, TAGLINE } from "@/lib/constants";
 import { cacheEventInSession, buildJoinPath } from "@/lib/event-bootstrap";
 import { isDemoEventId } from "@/lib/demo-event";
 import { lookupRemoteEventByCode, fetchRemoteEvent } from "@/lib/event-remote";
@@ -109,6 +109,9 @@ export default function HomePage() {
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-charcoal leading-tight">
             {APP_NAME}
           </h1>
+          <p className="text-sm text-champagne mt-2 font-medium tracking-[0.2em] uppercase">
+            by {STUDIO_NAME}
+          </p>
           <p className="text-warm-gray mt-3 text-base leading-relaxed">{TAGLINE}</p>
           <p className="text-sm text-champagne/80 mt-2 font-medium tracking-wide">
             One QR Code. Hundreds of Perspectives. One Beautiful Story.

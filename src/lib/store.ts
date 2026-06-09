@@ -38,6 +38,13 @@ import {
   THEME_PRESETS,
 } from "./constants";
 import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "./demo-event";
+import {
+  DEMO_SAMPLE_GALLERY_VERSION,
+  DEMO_SAMPLE_GALLERY_VERSION_KEY,
+  DEMO_SAMPLE_GUEST_NAMES,
+  DEMO_SAMPLE_PHOTOS,
+  demoSampleCreatedAt,
+} from "./demo-sample-photos";
 import { readBootstrapFromLocation, readEventFromSession } from "./event-bootstrap";
 import { fetchRemoteEvent, pushRemoteEvent } from "./event-remote";
 import { patchRemotePhoto, pushRemotePhoto } from "./photo-remote";
@@ -49,7 +56,6 @@ import {
   isEventJoinable,
   isEventUploadsAllowed,
 } from "./event-utils";
-import { formatGuestNamePOV } from "./utils";
 import {
   clearAllUploadMedia,
   deleteUploadMedia,
@@ -70,8 +76,15 @@ const uploadMediaCache = new Map<string, string>();
 let uploadsHydrated = false;
 let uploadsHydratePromise: Promise<void> | null = null;
 
+function isPersistedSampleUrl(imageData?: string): boolean {
+  return Boolean(imageData?.startsWith("/sample-photos/"));
+}
+
 function stripImageData(upload: Upload | PersistedUpload): PersistedUpload {
-  const { imageData: _removed, ...meta } = upload as Upload;
+  const { imageData, ...meta } = upload as Upload;
+  if (isPersistedSampleUrl(imageData)) {
+    return { ...meta, imageData };
+  }
   return meta;
 }
 
@@ -95,7 +108,7 @@ async function compactPersistedUploads(records: PersistedUpload[]): Promise<Pers
   const next: PersistedUpload[] = [];
 
   for (const record of records) {
-    if (record.imageData && record.imageData.length > 32) {
+    if (record.imageData && record.imageData.length > 32 && !isPersistedSampleUrl(record.imageData)) {
       const ok = await saveUploadMedia(record.id, record.imageData);
       uploadMediaCache.set(record.id, record.imageData);
       if (!ok) {
@@ -989,63 +1002,90 @@ export function deleteTemplate(templateId: string): void {
   );
 }
 
-export function seedSampleUploads(eventId: string): void {
-  if (typeof document === "undefined") return;
+export async function seedSampleUploads(eventId: string, force = false): Promise<void> {
+  if (typeof window === "undefined") return;
+  const id = normalizeEventId(eventId);
+  if (!isDemoEventId(id)) return;
 
-  const existing = getUploads(eventId);
-  if (existing.length > 0) return;
+  seedDemoEvent();
 
-  const sampleGuests = [
-    { id: "sample-0", firstName: "John", lastName: "Doe" },
-    { id: "sample-1", firstName: "Jane", lastName: "Smith" },
-    { id: "sample-2", firstName: "Michael", lastName: "Reyes" },
-    { id: "sample-3", firstName: "Anna", lastName: "Cruz" },
-    { id: "sample-4", firstName: "Maria", lastName: "Santos" },
+  const storedVersion = Number(localStorage.getItem(DEMO_SAMPLE_GALLERY_VERSION_KEY) ?? 0);
+  const sampleIds = new Set(DEMO_SAMPLE_PHOTOS.map((p) => p.id));
+  const demoUploads = getUploads(id);
+  const onlySampleUploads =
+    demoUploads.length === DEMO_SAMPLE_PHOTOS.length &&
+    demoUploads.every((u) => sampleIds.has(u.id)) &&
+    demoUploads.every((u) => isPersistedSampleUrl(u.imageData));
+
+  if (!force && storedVersion === DEMO_SAMPLE_GALLERY_VERSION && onlySampleUploads) {
+    return;
+  }
+
+  clearAllDemoGalleryUploads(id);
+
+  const allGuests = [
+    ...DEMO_SAMPLE_PHOTOS.map((p) => ({
+      id: p.guestId,
+      firstName: p.firstName,
+      lastName: p.lastName,
+    })),
+    ...DEMO_SAMPLE_GUEST_NAMES.map((g) => ({
+      id: g.id,
+      firstName: g.firstName,
+      lastName: g.lastName,
+    })),
   ];
 
-  const segments: EventSegment[] = ["ceremony", "cocktails", "reception", "first-dance", "speeches"];
-  const captions = [
-    "Bride walking down the aisle",
-    "Groom's reaction",
-    "Wedding vows",
-    "First kiss",
-    "First dance",
-  ];
+  const existingGuests = read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []);
+  const otherGuests = existingGuests.filter((g) => g.eventId !== id);
+  const demoGuests = allGuests.map((g) => ({
+    ...g,
+    eventId: id,
+    joinedAt: demoSampleCreatedAt("16:30"),
+  }));
+  write(GUESTS_KEY, [...otherGuests, ...demoGuests]);
 
   try {
-    sampleGuests.forEach((guest, gi) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 400;
-      canvas.height = 300;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.fillStyle = `hsl(${45 + gi * 40}, 35%, 85%)`;
-      ctx.fillRect(0, 0, 400, 300);
-      ctx.fillStyle = "#2C2C2C";
-      ctx.font = "italic 18px Georgia";
-      ctx.textAlign = "center";
-      ctx.fillText(captions[gi], 200, 140);
-      ctx.font = "14px sans-serif";
-      ctx.fillStyle = "#6B6560";
-      ctx.fillText(formatGuestNamePOV(`${guest.firstName} ${guest.lastName}`), 200, 170);
-
-      void addUpload({
-        eventId,
-        guestId: guest.id,
-        guestName: `${guest.firstName} ${guest.lastName}`,
-        imageData: canvas.toDataURL("image/jpeg", 0.7),
-        caption: captions[gi],
-        segment: segments[gi],
-        filter: "warm-wedding",
+    const otherUploads = readPersistedUploads().filter((r) => r.eventId !== id);
+    const sampleUploads: Upload[] = DEMO_SAMPLE_PHOTOS.map((sample) => {
+      const guestName = `${sample.firstName} ${sample.lastName}`;
+      uploadMediaCache.set(sample.id, sample.imagePath);
+      return {
+        id: sample.id,
+        eventId: id,
+        guestId: sample.guestId,
+        guestName,
+        imageData: sample.imagePath,
+        caption: sample.caption,
+        segment: sample.segment,
+        filter: "warm-wedding" as const,
         isVideo: false,
-      });
+        status: "approved" as const,
+        createdAt: demoSampleCreatedAt(sample.time),
+      };
     });
 
-    approveAllPending(eventId);
-  } catch {
-    // Sample data is optional — don't block guest join
+    writePersistedUploads([...sampleUploads, ...otherUploads]);
+    localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, String(DEMO_SAMPLE_GALLERY_VERSION));
+    window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
+  } catch (err) {
+    console.warn("[WeddingPOV] Demo sample photos could not be seeded:", err);
   }
+}
+
+/** Remove every upload for the JJ2027 demo — gallery is replaced with sample photos only. */
+function clearAllDemoGalleryUploads(eventId: string): void {
+  const records = readPersistedUploads();
+  const removed = records.filter((u) => u.eventId === eventId);
+  removed.forEach((u) => {
+    uploadMediaCache.delete(u.id);
+    void deleteUploadMedia(u.id);
+  });
+  writePersistedUploads(records.filter((u) => u.eventId !== eventId));
+  write(
+    GUESTS_KEY,
+    read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).filter((g) => g.eventId !== eventId)
+  );
 }
 
 export function getActiveEvents(): WeddingEvent[] {
@@ -1110,6 +1150,38 @@ export function deleteEventPermanently(eventId: string): boolean {
     getEvents().filter((e) => e.id !== eventId)
   );
   return true;
+}
+
+/** Remove every event except the JJ2027 sample (prillaga-wedding-2026). Frees storage. */
+export function cleanupAllEventsExceptDemo(): { removed: number; kept: string } {
+  if (typeof window === "undefined") {
+    return { removed: 0, kept: DEMO_EVENT_ID };
+  }
+
+  const events = getEvents();
+  const toRemove = events.filter((e) => !isDemoEventId(e.id));
+
+  for (const event of toRemove) {
+    clearEventGuestData(event.id);
+  }
+
+  const demo = events.find((e) => isDemoEventId(e.id)) ?? getHardcodedDemoEvent();
+  write(EVENTS_KEY, [demo]);
+
+  clearAllDemoGalleryUploads(DEMO_EVENT_ID);
+
+  write(
+    TEMPLATES_KEY,
+    getTemplates().filter((t) => t.eventId === DEMO_EVENT_ID)
+  );
+
+  const session = getSession();
+  if (session && !isDemoEventId(session.eventId)) {
+    clearSession();
+  }
+
+  localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, "0");
+  return { removed: toRemove.length, kept: DEMO_EVENT_ID };
 }
 
 export function resetEventForNewWedding(
