@@ -1,7 +1,7 @@
 import type { EventSegment } from "@/types";
 
 /** Bump when sample gallery photos change — triggers a full demo gallery reset. */
-export const DEMO_SAMPLE_GALLERY_VERSION = 2;
+export const DEMO_SAMPLE_GALLERY_VERSION = 3;
 
 export const DEMO_SAMPLE_GALLERY_VERSION_KEY = "wedding-pov-demo-gallery-version";
 

@@ -1,5 +1,5 @@
 import { DEMO_EVENT_ID } from "@/lib/constants";
-import { getHardcodedDemoEvent } from "@/lib/demo-event";
+import { getHardcodedDemoEvent, toCanonicalEventId } from "@/lib/demo-event";
 import type { WeddingEvent } from "@/types";
 
 /** Built-in events always available on every device (no cloud required). */
@@ -26,6 +26,5 @@ export const EVENT_ID_ALIASES: Record<string, string> = {
 export function resolveEventIdAlias(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  const key = trimmed.toLowerCase();
-  return EVENT_ID_ALIASES[key] ?? trimmed;
+  return toCanonicalEventId(trimmed);
 }

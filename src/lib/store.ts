@@ -37,7 +37,12 @@ import {
   STORAGE_PLAN_GB,
   THEME_PRESETS,
 } from "./constants";
-import { getHardcodedDemoEvent, isDemoEventId, normalizeEventId } from "./demo-event";
+import {
+  getHardcodedDemoEvent,
+  isDemoEventId,
+  normalizeEventId,
+  toCanonicalEventId,
+} from "./demo-event";
 import {
   DEMO_SAMPLE_GALLERY_VERSION,
   DEMO_SAMPLE_GALLERY_VERSION_KEY,
@@ -287,7 +292,7 @@ function cacheEventLocally(event: WeddingEvent): WeddingEvent {
 
 /** Resolve event on any device — always merge cloud config (incl. music) with local cache. */
 export async function loadEventForGuest(eventId: string): Promise<WeddingEvent | null> {
-  const id = normalizeEventId(eventId);
+  const id = toCanonicalEventId(eventId);
   if (!id) return null;
 
   let base: WeddingEvent | null = null;
@@ -675,16 +680,18 @@ export function clearSession(): void {
 }
 
 export function getUploads(eventId: string, includeRemoved = false): Upload[] {
+  const id = toCanonicalEventId(eventId);
   return readPersistedUploads()
-    .filter((u) => u.eventId === eventId && (includeRemoved || u.status !== "removed"))
+    .filter((u) => u.eventId === id && (includeRemoved || u.status !== "removed"))
     .map(enrichUpload)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 /** All uploads for quota counting, including slot-locked removed entries */
 export function getAllUploadsForQuota(eventId: string): Upload[] {
+  const id = toCanonicalEventId(eventId);
   return readPersistedUploads()
-    .filter((u) => u.eventId === eventId)
+    .filter((u) => u.eventId === id)
     .map(enrichUpload);
 }
 
@@ -1004,7 +1011,7 @@ export function deleteTemplate(templateId: string): void {
 
 export async function seedSampleUploads(eventId: string, force = false): Promise<void> {
   if (typeof window === "undefined") return;
-  const id = normalizeEventId(eventId);
+  const id = toCanonicalEventId(eventId);
   if (!isDemoEventId(id)) return;
 
   seedDemoEvent();
@@ -1181,6 +1188,7 @@ export function cleanupAllEventsExceptDemo(): { removed: number; kept: string } 
   }
 
   localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, "0");
+  void seedSampleUploads(DEMO_EVENT_ID, true);
   return { removed: toRemove.length, kept: DEMO_EVENT_ID };
 }
 

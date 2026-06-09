@@ -26,8 +26,23 @@ export function normalizeEventId(raw: string | undefined): string {
   }
 }
 
+const DEMO_EVENT_ALIASES = new Set([
+  DEMO_EVENT_ID,
+  "prillaga",
+  "prillaga-wedding",
+  "demo",
+  "jj2027",
+  "jb2027",
+]);
+
 export function isDemoEventId(eventId: string): boolean {
-  return normalizeEventId(eventId) === DEMO_EVENT_ID;
+  return DEMO_EVENT_ALIASES.has(normalizeEventId(eventId).toLowerCase());
+}
+
+/** Map guest-facing codes (e.g. JJ2027) to the stored event id. */
+export function toCanonicalEventId(eventId: string): string {
+  if (isDemoEventId(eventId)) return DEMO_EVENT_ID;
+  return normalizeEventId(eventId);
 }
 
 /** Built-in demo wedding — no localStorage required. */
