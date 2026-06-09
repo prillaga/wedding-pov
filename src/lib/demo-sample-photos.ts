@@ -1,7 +1,7 @@
 import type { EventSegment } from "@/types";
 
 /** Bump when sample gallery photos change — triggers a full demo gallery reset. */
-export const DEMO_SAMPLE_GALLERY_VERSION = 4;
+export const DEMO_SAMPLE_GALLERY_VERSION = 5;
 
 export const DEMO_SAMPLE_GALLERY_VERSION_KEY = "wedding-pov-demo-gallery-version";
 
@@ -23,6 +23,10 @@ export interface DemoSamplePhoto {
   imagePath: string;
 }
 
+function samplePhotoUrl(file: string): string {
+  return `/sample-photos/${file}?v=${DEMO_SAMPLE_GALLERY_VERSION}`;
+}
+
 export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
   {
     id: "demo-sample-ceremony-exit",
@@ -32,7 +36,7 @@ export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
     caption: "Ceremony Exit",
     segment: "ceremony",
     time: "18:12",
-    imagePath: "/sample-photos/ceremony-exit.png",
+    imagePath: samplePhotoUrl("ceremony-exit.png"),
   },
   {
     id: "demo-sample-first-dance",
@@ -42,7 +46,7 @@ export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
     caption: "First Dance",
     segment: "first-dance",
     time: "20:42",
-    imagePath: "/sample-photos/first-dance.png",
+    imagePath: samplePhotoUrl("first-dance.png"),
   },
   {
     id: "demo-sample-group-selfie",
@@ -52,7 +56,7 @@ export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
     caption: "Reception Selfie",
     segment: "reception",
     time: "20:55",
-    imagePath: "/sample-photos/group-selfie.png",
+    imagePath: samplePhotoUrl("group-selfie.png"),
   },
   {
     id: "demo-sample-reception-table",
@@ -62,7 +66,7 @@ export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
     caption: "Table 7 Memories",
     segment: "reception",
     time: "19:30",
-    imagePath: "/sample-photos/reception-table.png",
+    imagePath: samplePhotoUrl("reception-table.png"),
   },
   {
     id: "demo-sample-wedding-vows",
@@ -72,7 +76,7 @@ export const DEMO_SAMPLE_PHOTOS: DemoSamplePhoto[] = [
     caption: "Wedding Vows",
     segment: "ceremony",
     time: "17:48",
-    imagePath: "/sample-photos/wedding-vows.png",
+    imagePath: samplePhotoUrl("wedding-vows.png"),
   },
 ];
 

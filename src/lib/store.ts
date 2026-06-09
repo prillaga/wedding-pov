@@ -95,10 +95,22 @@ function stripImageData(upload: Upload | PersistedUpload): PersistedUpload {
 }
 
 function enrichUpload(record: PersistedUpload): Upload {
+  if (isPersistedSampleUrl(record.imageData)) {
+    return { ...record, imageData: record.imageData! };
+  }
   return {
     ...record,
     imageData: uploadMediaCache.get(record.id) ?? record.imageData ?? "",
   };
+}
+
+function invalidateUploadMediaCache(ids: string[]): void {
+  ids.forEach((id) => uploadMediaCache.delete(id));
+  uploadsHydrated = false;
+}
+
+function uploadMatchesEventId(uploadEventId: string, eventId: string): boolean {
+  return toCanonicalEventId(uploadEventId) === toCanonicalEventId(eventId);
 }
 
 function readPersistedUploads(): PersistedUpload[] {
@@ -139,6 +151,7 @@ export async function ensureUploadsHydrated(): Promise<void> {
 
     await Promise.all(
       records.map(async (record) => {
+        if (isPersistedSampleUrl(record.imageData)) return;
         if (uploadMediaCache.has(record.id)) return;
         const media = await getUploadMedia(record.id);
         if (media) uploadMediaCache.set(record.id, media);
@@ -683,7 +696,9 @@ export function clearSession(): void {
 export function getUploads(eventId: string, includeRemoved = false): Upload[] {
   const id = toCanonicalEventId(eventId);
   return readPersistedUploads()
-    .filter((u) => u.eventId === id && (includeRemoved || u.status !== "removed"))
+    .filter(
+      (u) => uploadMatchesEventId(u.eventId, id) && (includeRemoved || u.status !== "removed")
+    )
     .map(enrichUpload)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -692,7 +707,7 @@ export function getUploads(eventId: string, includeRemoved = false): Upload[] {
 export function getAllUploadsForQuota(eventId: string): Upload[] {
   const id = toCanonicalEventId(eventId);
   return readPersistedUploads()
-    .filter((u) => u.eventId === id)
+    .filter((u) => uploadMatchesEventId(u.eventId, id))
     .map(enrichUpload);
 }
 
@@ -1029,12 +1044,17 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
   const onlySampleUploads =
     demoUploads.length === DEMO_SAMPLE_PHOTOS.length &&
     demoUploads.every((u) => sampleIds.has(u.id)) &&
-    demoUploads.every((u) => isPersistedSampleUrl(u.imageData));
+    demoUploads.every(
+      (u) =>
+        isPersistedSampleUrl(u.imageData) &&
+        u.imageData === DEMO_SAMPLE_PHOTOS.find((s) => s.id === u.id)?.imagePath
+    );
 
   if (!force && storedVersion === DEMO_SAMPLE_GALLERY_VERSION && onlySampleUploads) {
     return;
   }
 
+  const removedIds = demoUploads.map((u) => u.id);
   clearAllDemoGalleryUploads(id);
 
   const allGuests = [
@@ -1051,7 +1071,9 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
   ];
 
   const existingGuests = read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []);
-  const otherGuests = existingGuests.filter((g) => g.eventId !== id);
+  const otherGuests = existingGuests.filter(
+    (g) => !g.eventId || !uploadMatchesEventId(g.eventId, id)
+  );
   const demoGuests = allGuests.map((g) => ({
     ...g,
     eventId: id,
@@ -1060,10 +1082,9 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
   write(GUESTS_KEY, [...otherGuests, ...demoGuests]);
 
   try {
-    const otherUploads = readPersistedUploads().filter((r) => r.eventId !== id);
+    const otherUploads = readPersistedUploads().filter((r) => !uploadMatchesEventId(r.eventId, id));
     const sampleUploads: Upload[] = DEMO_SAMPLE_PHOTOS.map((sample) => {
       const guestName = `${sample.firstName} ${sample.lastName}`;
-      uploadMediaCache.set(sample.id, sample.imagePath);
       return {
         id: sample.id,
         eventId: id,
@@ -1082,6 +1103,8 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
     writePersistedUploads([...sampleUploads, ...otherUploads]);
     localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, String(DEMO_SAMPLE_GALLERY_VERSION));
     localStorage.removeItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY);
+    invalidateUploadMediaCache([...removedIds, ...DEMO_SAMPLE_PHOTOS.map((p) => p.id)]);
+    void deleteUploadMediaBatch([...removedIds, ...DEMO_SAMPLE_PHOTOS.map((p) => p.id)]);
     window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
   } catch (err) {
     console.warn("[WeddingPOV] Demo sample photos could not be seeded:", err);
@@ -1092,7 +1115,10 @@ export async function seedSampleUploads(eventId: string, force = false): Promise
 export function clearDemoGallery(): number {
   if (typeof window === "undefined") return 0;
   const removed = getUploads(DEMO_EVENT_ID).length;
+  const removedIds = getUploads(DEMO_EVENT_ID).map((u) => u.id);
   clearAllDemoGalleryUploads(DEMO_EVENT_ID);
+  invalidateUploadMediaCache(removedIds);
+  void deleteUploadMediaBatch(removedIds);
   localStorage.setItem(DEMO_SAMPLE_GALLERY_CLEARED_KEY, "1");
   localStorage.setItem(DEMO_SAMPLE_GALLERY_VERSION_KEY, "0");
   window.dispatchEvent(new CustomEvent("wedding-pov:uploads-ready"));
@@ -1101,16 +1127,19 @@ export function clearDemoGallery(): number {
 
 /** Remove every upload for the JJ2027 demo — gallery is replaced with sample photos only. */
 function clearAllDemoGalleryUploads(eventId: string): void {
+  const id = toCanonicalEventId(eventId);
   const records = readPersistedUploads();
-  const removed = records.filter((u) => u.eventId === eventId);
+  const removed = records.filter((u) => uploadMatchesEventId(u.eventId, id));
   removed.forEach((u) => {
     uploadMediaCache.delete(u.id);
     void deleteUploadMedia(u.id);
   });
-  writePersistedUploads(records.filter((u) => u.eventId !== eventId));
+  writePersistedUploads(records.filter((u) => !uploadMatchesEventId(u.eventId, id)));
   write(
     GUESTS_KEY,
-    read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).filter((g) => g.eventId !== eventId)
+    read<(Guest & { eventId?: string })[]>(GUESTS_KEY, []).filter(
+      (g) => !g.eventId || !uploadMatchesEventId(g.eventId, id)
+    )
   );
 }
 

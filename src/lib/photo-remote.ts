@@ -1,5 +1,5 @@
 import { ADMIN_AUTH_KEY, ADMIN_PASSWORD } from "@/lib/constants";
-import { normalizeEventId } from "@/lib/demo-event";
+import { isDemoEventId, normalizeEventId, toCanonicalEventId } from "@/lib/demo-event";
 import type { Upload } from "@/types";
 
 function getAdminPasswordHeader(): string | undefined {
@@ -13,8 +13,8 @@ function getAdminPasswordHeader(): string | undefined {
 }
 
 export async function fetchRemotePhotos(eventId: string): Promise<Upload[] | null> {
-  const id = normalizeEventId(eventId);
-  if (!id) return null;
+  const id = toCanonicalEventId(eventId);
+  if (!id || isDemoEventId(id)) return null;
 
   try {
     const res = await fetch(`/api/events/${encodeURIComponent(id)}/photos`, {
@@ -79,8 +79,8 @@ export async function syncLocalPhotosToCloud(
   eventId: string,
   localPhotos: Upload[]
 ): Promise<void> {
-  const id = normalizeEventId(eventId);
-  if (!id || localPhotos.length === 0) return;
+  const id = toCanonicalEventId(eventId);
+  if (!id || isDemoEventId(id) || localPhotos.length === 0) return;
   if (syncingEvents.has(id)) return;
 
   syncingEvents.add(id);

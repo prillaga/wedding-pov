@@ -4,28 +4,36 @@ import { useLayoutEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PresentationSlideshow } from "@/components/slideshow/PresentationSlideshow";
 import { useEventPhotos } from "@/hooks/useEventPhotos";
+import { isDemoEventId } from "@/lib/demo-event";
 import { loadEventForGuest, seedSampleUploads } from "@/lib/store";
 import type { WeddingEvent } from "@/types";
 
 export default function DisplayModePage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { photos, loading, refresh } = useEventPhotos(eventId, { pollIntervalMs: 2000 });
+  const isDemo = isDemoEventId(eventId);
+  const [demoReady, setDemoReady] = useState(!isDemo);
+  const { photos, loading, refresh } = useEventPhotos(eventId, {
+    pollIntervalMs: 2000,
+    enabled: demoReady,
+  });
   const [event, setEvent] = useState<WeddingEvent | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
 
   useLayoutEffect(() => {
     let cancelled = false;
-    void loadEventForGuest(eventId).then((loaded) => {
+    void loadEventForGuest(eventId).then(async (loaded) => {
       if (cancelled) return;
-      if (loaded) void seedSampleUploads(eventId).then(() => refresh());
+      if (loaded) await seedSampleUploads(eventId);
+      if (isDemo) setDemoReady(true);
+      if (loaded) refresh();
       setEvent(loaded);
       setEventLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [eventId, refresh]);
+  }, [eventId, isDemo, refresh]);
 
   return (
     <PresentationSlideshow

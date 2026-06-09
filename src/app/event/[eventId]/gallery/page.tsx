@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -12,14 +12,18 @@ import { loadEventForGuest, seedSampleUploads } from "@/lib/store";
 export default function GalleryPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { photos: uploads, refresh } = useEventPhotos(eventId);
+  const isDemo = isDemoEventId(eventId);
+  const [demoReady, setDemoReady] = useState(!isDemo);
+  const { photos: uploads, refresh } = useEventPhotos(eventId, { enabled: demoReady });
 
   useLayoutEffect(() => {
-    if (!isDemoEventId(eventId)) return;
-    void loadEventForGuest(eventId).then((loaded) => {
-      if (loaded) void seedSampleUploads(eventId).then(() => refresh());
+    if (!isDemo) return;
+    void loadEventForGuest(eventId).then(async (loaded) => {
+      if (loaded) await seedSampleUploads(eventId);
+      setDemoReady(true);
+      refresh();
     });
-  }, [eventId, refresh]);
+  }, [eventId, isDemo, refresh]);
 
   return (
     <main className="min-h-screen-safe pb-24 sm:pb-28">

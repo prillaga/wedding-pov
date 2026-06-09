@@ -1,4 +1,5 @@
 import { ensureUploadsHydrated, getApprovedUploads } from "@/lib/store";
+import { isDemoEventId, toCanonicalEventId } from "@/lib/demo-event";
 import { fetchPhotosFromFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import {
   fetchRemotePhotos,
@@ -37,7 +38,13 @@ export function getSlideshowPhotos(eventId: string): Upload[] {
 
 export async function fetchSlideshowPhotos(eventId: string): Promise<Upload[]> {
   await ensureUploadsHydrated();
-  const local = getSlideshowPhotos(eventId);
+  const id = toCanonicalEventId(eventId);
+
+  if (isDemoEventId(id)) {
+    return getSlideshowPhotos(id);
+  }
+
+  const local = getSlideshowPhotos(id);
 
   if (isFirebaseConfigured()) {
     try {
