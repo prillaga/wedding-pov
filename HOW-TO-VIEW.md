@@ -42,6 +42,6 @@ Open in **Safari** (not Cursor):
 
 ## Live site (Vercel)
 
-https://wedding-pov-two.vercel.app/wedding/prillaga-wedding-2026
+https://wedding-pov-by-prillaga-co.vercel.app/wedding/prillaga-wedding-2026
 
 *(May be behind local changes until latest code is pushed to GitHub.)*
