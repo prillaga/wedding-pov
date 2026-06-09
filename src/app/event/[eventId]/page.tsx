@@ -7,7 +7,8 @@ import { useParams } from "next/navigation";
 import { GuestContributionTracker } from "@/components/dashboard-luxury/GuestContributionTracker";
 import { HowItWorksSection } from "@/components/dashboard-luxury/HowItWorksSection";
 import { LuxuryFeatureCard } from "@/components/dashboard-luxury/LuxuryFeatureCard";
-import { LuxuryHeroBanner } from "@/components/dashboard-luxury/LuxuryHeroBanner";
+import { HeroBannerRenderer } from "@/components/hero/HeroBannerRenderer";
+import { POVBadge } from "@/components/layout/PageHeader";
 import { WeddingStoryBanner } from "@/components/dashboard-luxury/WeddingStoryBanner";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { LiveSlideshow } from "@/components/slideshow/LiveSlideshow";
@@ -37,16 +38,28 @@ export default function EventHomePage() {
 
   useLayoutEffect(() => {
     let cancelled = false;
-    void loadEventForGuest(eventId).then((loaded) => {
-      if (cancelled) return;
-      if (loaded) void seedSampleUploads(eventId).then(() => refreshPhotos());
-      setEvent(loaded);
-      const session = getSession();
-      setGuest(session ? getGuest(session.guestId) ?? null : null);
-      if (!loaded) refreshPhotos();
-    });
+
+    const refreshEvent = () => {
+      void loadEventForGuest(eventId).then((loaded) => {
+        if (cancelled) return;
+        if (loaded) void seedSampleUploads(eventId).then(() => refreshPhotos());
+        setEvent(loaded);
+        const session = getSession();
+        setGuest(session ? getGuest(session.guestId) ?? null : null);
+        if (!loaded) refreshPhotos();
+      });
+    };
+
+    refreshEvent();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshEvent();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [eventId, refreshPhotos]);
 
@@ -111,7 +124,18 @@ export default function EventHomePage() {
         <div className="absolute top-20 -left-10 text-6xl opacity-[0.04] select-none">✿</div>
         <div className="absolute bottom-40 -right-8 text-5xl opacity-[0.04] select-none">❀</div>
 
-        <LuxuryHeroBanner event={event} guest={guest} />
+        <div className="mx-4 mt-4 rounded-[32px] overflow-hidden luxury-shadow">
+          <HeroBannerRenderer event={event} compact showJoinButton={false}>
+            {guest && (
+              <div className="flex items-end justify-center h-full pb-8 pointer-events-none">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full luxury-glass border border-champagne/20 pointer-events-auto">
+                  <Sparkles className="w-3.5 h-3.5 text-champagne" />
+                  <POVBadge name={`${guest.firstName} ${guest.lastName}`} size="sm" />
+                </div>
+              </div>
+            )}
+          </HeroBannerRenderer>
+        </div>
 
         <div className="px-4 sm:px-5 space-y-8 mt-6 relative z-10">
           <WeddingStoryBanner eventId={eventId} variant="full" />

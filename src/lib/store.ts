@@ -204,6 +204,21 @@ function mergeHeroSettings(raw?: Partial<HeroSettings>): HeroSettings {
   };
 }
 
+function mergeThemeSettings(
+  current: ThemeSettings,
+  patch: ThemeSettingsPatch
+): ThemeSettings {
+  return {
+    ...current,
+    ...patch,
+    colors: patch.colors ? { ...current.colors, ...patch.colors } : current.colors,
+    screenBackgrounds: patch.screenBackgrounds
+      ? { ...current.screenBackgrounds, ...patch.screenBackgrounds }
+      : current.screenBackgrounds,
+    hero: patch.hero ? mergeHeroSettings({ ...current.hero, ...patch.hero }) : current.hero,
+  };
+}
+
 function migrateEvent(raw: Partial<WeddingEvent> & { id: string }): WeddingEvent {
   const settings: EventSettings = raw.settings ?? {
     ...DEFAULT_EVENT_SETTINGS,
@@ -372,9 +387,21 @@ function mergeSlideshowMusic(
 }
 
 function mergeGuestEventConfig(local: WeddingEvent, remote: WeddingEvent): WeddingEvent {
+  const localTheme = local.theme ?? DEFAULT_THEME;
+  const remoteTheme = remote.theme ?? DEFAULT_THEME;
   return migrateEvent({
     ...local,
     ...remote,
+    theme: {
+      ...localTheme,
+      ...remoteTheme,
+      colors: { ...localTheme.colors, ...remoteTheme.colors },
+      screenBackgrounds: {
+        ...localTheme.screenBackgrounds,
+        ...remoteTheme.screenBackgrounds,
+      },
+      hero: mergeHeroSettings({ ...localTheme.hero, ...remoteTheme.hero }),
+    },
     slideshow: {
       ...local.slideshow,
       ...remote.slideshow,
@@ -423,15 +450,7 @@ export function updateTheme(eventId: string, theme: ThemeSettingsPatch): void {
   if (!event) return;
   saveEvent({
     ...event,
-    theme: {
-      ...event.theme,
-      ...theme,
-      colors: theme.colors ? { ...event.theme.colors, ...theme.colors } : event.theme.colors,
-      screenBackgrounds: theme.screenBackgrounds
-        ? { ...event.theme.screenBackgrounds, ...theme.screenBackgrounds }
-        : event.theme.screenBackgrounds,
-      hero: theme.hero ? { ...event.theme.hero, ...theme.hero } : event.theme.hero,
-    },
+    theme: mergeThemeSettings(event.theme, theme),
   });
 }
 

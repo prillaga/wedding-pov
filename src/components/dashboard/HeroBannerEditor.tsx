@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ImagePlus,
   Layout,
@@ -38,6 +38,10 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 export function HeroBannerEditor({ event, onRefresh }: HeroBannerEditorProps) {
   const [draft, setDraft] = useState<ThemeSettings>(event.theme);
+
+  useEffect(() => {
+    setDraft(event.theme);
+  }, [event.theme]);
 
   const patchHero = useCallback(
     (patch: Partial<HeroSettings>) => {
